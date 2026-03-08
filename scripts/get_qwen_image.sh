@@ -2,7 +2,7 @@
 # /opt/get_qwen.sh (resume-friendly, supports Qwen Image + Qwen Image Edit)
 set -euo pipefail
 
-export HF_HUB_ENABLE_HF_TRANSFER=1
+export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # persistent HF cache
 HF="/opt/venv/bin/hf"
 

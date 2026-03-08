@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import sys
 import os
+import sys
 import shutil
 import tempfile
 import subprocess
@@ -144,16 +144,32 @@ MODEL_FAMILIES = [
     {
         "name": "LTX-2 (19B) - Video Generation",
         "keywords": ["LTX"],
+        "exclude_keywords": ["2.3"],
         "script": "get_ltx2.sh",
         "variants": [
             {
-                "name": "Standard (BF16 Checkpoint + FP4 Text Enc)", 
+                "name": "Standard (BF16 Checkpoint + FP4 Text Enc)",
                 "args": ["common", "checkpoint", "lora"]
             },
             {
-                "name": "FP8 (Compressed Checkpoint + FP4 Text Enc)", 
+                "name": "FP8 (Compressed Checkpoint + FP4 Text Enc)",
                 "args": ["common", "checkpoint fp8", "lora"]
             }
+        ]
+    },
+    {
+        "name": "LTX-2.3 (22B) - Video Generation",
+        "keywords": ["LTX", "2.3"],
+        "script": "get_ltx2.sh",
+        "variants": [
+            {
+                "name": "Distilled (Faster Inference + FP4 Text Enc)",
+                "args": ["common-23", "checkpoint-23 distilled", "lora-23"]
+            },
+            {
+                "name": "Dev / BF16 (Full Quality + FP4 Text Enc)",
+                "args": ["common-23", "checkpoint-23", "lora-23"]
+            },
         ]
     },
 ]
@@ -234,10 +250,30 @@ def select_variant(family):
         
     return variants[int(choice)]
 
-def execute_download(script_name, args):
+def ask_download_options():
+    """
+    Show a checklist of optional download settings.
+    Returns a dict of options, or None if the user cancelled.
+    """
+    result = run_dialog([
+        "--clear", "--backtitle", "Download Options",
+        "--title", "Download Options",
+        "--cancel-label", "Back",
+        "--checklist", "Configure options (Space to toggle, Enter to confirm):", "12", "72", "2",
+        "hf_transfer", "Enable hf_transfer (faster downloads, may overwhelm network on Fedora)", "on",
+        "disable_xet",  "Disable XET protocol (workaround for connectivity issues)", "off"
+    ])
+    if result is None:
+        return None
+    return {
+        "hf_transfer": "hf_transfer" in result,
+        "disable_xet":  "disable_xet"  in result,
+    }
+
+def execute_download(script_name, args, options=None):
     """Executes the download script using subprocess."""
     script_path = SCRIPT_DIR / script_name
-    
+
     if not script_path.exists():
         # Fallback to local check or error
         if not Path(script_name).exists():
@@ -249,18 +285,24 @@ def execute_download(script_name, args):
     cmds = []
     for arg_str in args:
         cmds.append(f"bash {script_path} {arg_str}")
-        
+
     full_cmd = " && ".join(cmds)
-    
+
+    env = os.environ.copy()
+    env["HF_HUB_ENABLE_HF_TRANSFER"] = "1" if (options and options.get("hf_transfer")) else "0"
+    env["HF_HUB_DISABLE_XET"]        = "1" if (options and options.get("disable_xet"))  else "0"
+
     subprocess.run(["clear"])
-    print(f"Executing: {full_cmd}")
+    hf_status  = "ON"  if env["HF_HUB_ENABLE_HF_TRANSFER"] == "1" else "OFF"
+    xet_status = "OFF" if env["HF_HUB_DISABLE_XET"]        == "1" else "ON"
+    print(f"hf_transfer: {hf_status} | XET: {xet_status} | Executing: {full_cmd}")
     print("-" * 60)
-    
+
     try:
-        subprocess.run(full_cmd, shell=True)
+        subprocess.run(full_cmd, shell=True, env=env)
     except KeyboardInterrupt:
         print("\nProcess interrupted by user.")
-    
+
     print("-" * 60)
     input("Press Enter to return to the menu...")
 
@@ -293,23 +335,32 @@ def main():
         
         # Step 2: Select Variant (FP8 vs FP16/BF16)
         variant = select_variant(selected_family)
-        
+
         if not variant:
             continue # User went back
-            
+
+        # Step 3: Download options (hf_transfer, etc.)
+        options = ask_download_options()
+
+        if options is None:
+            continue # User went back
+
         # Confirmation
+        hf_status  = "ON"  if options.get("hf_transfer") else "OFF"
+        xet_status = "OFF" if options.get("disable_xet")  else "ON"
         confirm_msg = (
             f"Model:   {selected_family['name']}\n"
-            f"Variant: {variant['name']}\n\n"
+            f"Variant: {variant['name']}\n"
+            f"hf_transfer: {hf_status} | XET: {xet_status}\n\n"
             f"This will run '{selected_family['script']}' with args:\n"
             f"{variant['args']}\n\n"
             "Proceed?"
         )
-        
+
         try:
             subprocess.run(["dialog", "--yesno", confirm_msg, "15", "60"], check=True)
             # Exit code 0 means Yes
-            execute_download(selected_family["script"], variant["args"])
+            execute_download(selected_family["script"], variant["args"], options)
             
         except subprocess.CalledProcessError:
             pass # No/Cancel

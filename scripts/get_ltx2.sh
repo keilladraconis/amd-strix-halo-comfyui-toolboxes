@@ -2,8 +2,8 @@
 # /opt/get_ltx2.sh  (resume-friendly)
 set -euo pipefail
 
-export HF_HUB_ENABLE_HF_TRANSFER=1
-export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # persistent HF cache
+HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
+HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # persistent HF cache
 HF="/opt/venv/bin/hf"
 
 MODEL_HOME="$HOME/comfy-models"
@@ -26,6 +26,7 @@ download_if_missing () {
     return
   fi
 
+  echo "HF Transfer: ${HF_HUB_ENABLE_HF_TRANSFER}"
   echo "↓ Downloading $(basename "$remote") → $dest_file"
   mkdir -p "$(dirname "$staged")"        # ensure stage path exists
   mkdir -p "$dest_dir"                   # ensure dest dir exists
@@ -41,10 +42,15 @@ usage() {
   cat <<'USAGE'
 Usage: get_ltx2.sh <target> [variant]
 
-Targets:
-  common       Text encoder (Gemma 3) + Spatial Upscaler
+LTX-2 (19B) Targets:
+  common       Text encoder (Gemma 3 FP4) + 19B Spatial Upscaler x2
   checkpoint   LTX-2 19B Checkpoint (Default: BF16. Use 'fp8' as 2nd arg for FP8)
-  lora         Distilled LoRA + Camera Control LoRA
+  lora         19B Distilled LoRA + Camera Control LoRA
+
+LTX-2.3 (22B) Targets:
+  common-23       Text encoder (Gemma 3 FP4) + 2.3 Spatial x2 + Temporal x2 Upscalers
+  checkpoint-23   LTX-2.3 22B Checkpoint (Default: dev/BF16. Use 'distilled' as 2nd arg)
+  lora-23         2.3 Distilled LoRA (384)
 
 Maintenance:
   clean-stage   Remove staging folder (keeps final models)
@@ -52,6 +58,7 @@ Maintenance:
 
 Notes:
 - Downloads RESUME automatically via persistent --cache-dir and --local-dir.
+- LTX-2 (19B) and LTX-2.3 (22B) share the same Gemma 3 FP4 text encoder from Comfy-Org.
 USAGE
 }
 
@@ -81,13 +88,44 @@ case "${1:-}" in
     echo "==> LTX-2 LoRAs"
     # Distilled LoRA
     download_if_missing "Lightricks/LTX-2" "ltx-2-19b-distilled-lora-384.safetensors" "loras"
-    
+
     # Camera Control LoRA
     # Using the specific repo for camera control if needed, or check if main repo has it.
     # User link: https://huggingface.co/Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Left
     download_if_missing "Lightricks/LTX-2-19b-LoRA-Camera-Control-Dolly-Left" "ltx-2-19b-lora-camera-control-dolly-left.safetensors" "loras"
     ;;
-  
+
+  # --- LTX-2.3 (22B) targets ---
+  common-23)
+    echo "==> LTX-2.3 Text Encoder + Upscalers"
+    # Text Encoder: Gemma 3 12B IT FP4 Mixed (shared with 19B, no gated access required)
+    download_if_missing "Comfy-Org/ltx-2" "split_files/text_encoders/gemma_3_12B_it_fp4_mixed.safetensors" "text_encoders"
+
+    # Spatial Upscaler x2
+    download_if_missing "Lightricks/LTX-2.3" "ltx-2.3-spatial-upscaler-x2-1.0.safetensors" "latent_upscale_models"
+
+    # Temporal Upscaler x2 (new in 2.3)
+    download_if_missing "Lightricks/LTX-2.3" "ltx-2.3-temporal-upscaler-x2-1.0.safetensors" "latent_upscale_models"
+    ;;
+
+  checkpoint-23)
+    VARIANT="${2:-dev}"
+    echo "==> LTX-2.3 22B Checkpoint ($VARIANT)"
+
+    if [[ "$VARIANT" == "distilled" ]]; then
+        download_if_missing "Lightricks/LTX-2.3" "ltx-2.3-22b-distilled.safetensors" "checkpoints"
+    else
+        # Default / dev (BF16)
+        download_if_missing "Lightricks/LTX-2.3" "ltx-2.3-22b-dev.safetensors" "checkpoints"
+    fi
+    ;;
+
+  lora-23)
+    echo "==> LTX-2.3 LoRAs"
+    # Distilled LoRA
+    download_if_missing "Lightricks/LTX-2.3" "ltx-2.3-22b-distilled-lora-384.safetensors" "loras"
+    ;;
+
   clean-stage)
     rm -rf "$STAGE"; echo "✓ Removed stage: $STAGE"
     ;;

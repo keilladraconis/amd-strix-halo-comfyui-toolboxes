@@ -3,7 +3,7 @@
 # Downloads models for ComfyUI HunyuanVideo 1.5 (T2V & I2V)
 set -euo pipefail
 
-export HF_HUB_ENABLE_HF_TRANSFER=1
+export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 HF="/opt/venv/bin/hf"
 
