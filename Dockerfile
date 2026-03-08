@@ -59,13 +59,6 @@ RUN git clone --depth=1 https://github.com/Lightricks/ComfyUI-LTXVideo && \
 # LTX-2.3 nodes: CM_FloatToInt
 RUN git clone --depth=1 https://github.com/evanspearman/ComfyMath && \
     chmod -R a+rwX ComfyMath
-# LTX-2.3 nodes: ClownSampler
-RUN git clone --depth=1 https://github.com/ClownsharkBatwing/RES4LYF && \
-    chmod -R a+rwX RES4LYF && \
-    python -m pip install -r RES4LYF/requirements.txt
-# LTX-2.3 nodes: rgthree
-RUN git clone --depth=1 https://github.com/rgthree/rgthree-comfy.git && \
-    chmod -R a+rwX rgthree-comfy
 
 # ── 9. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
