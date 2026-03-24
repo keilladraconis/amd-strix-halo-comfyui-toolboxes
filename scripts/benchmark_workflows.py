@@ -222,7 +222,7 @@ def main():
                 shutil.rmtree(miopen_dir)
             
             # 2. Start Server
-            comfy_outputs_dir = os.path.join(home_dir, "comfy-outputs")
+            comfy_outputs_dir = os.path.join(home_dir, "comfy-ui/output")
             comfy_cmd = [
                 sys.executable, "main.py",
                 "--port", server_port,

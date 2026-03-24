@@ -83,8 +83,13 @@ printf 'Repo   : https://github.com/kyuz0/amd-strix-halo-comfyui-toolboxes\n'
 printf 'Image  : docker.io/kyuz0/amd-strix-halo-comfyui:latest\n\n'
 printf 'Included:\n'
 printf '  - %-16s → %s\n' "ComfyUI"            "start_comfy_ui (http://localhost:8000)"
+printf '  - %-16s → %s\n' "Install Workflows"  "install_workflows  (copy bundled workflows to ~/comfy-ui)"
+printf '  - %-16s → %s\n' "Model Manager"  "model_manager (select and install models for workflows)"
+
 echo
 printf 'SSH tip: ssh -L 8000:localhost:8000 user@host\n\n'
 
 # Aliases
-alias start_comfy_ui='cd /opt/ComfyUI && python main.py --port 8000 --output-directory $HOME/comfy-outputs --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+alias start_comfy_ui='cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+alias install_workflows='/opt/install_workflows.sh'
+alias model_manager='python /opt/model_manager.py'

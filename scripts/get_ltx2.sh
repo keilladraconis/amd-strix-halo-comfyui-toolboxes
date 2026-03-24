@@ -6,7 +6,7 @@ HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
 HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # persistent HF cache
 HF="/opt/venv/bin/hf"
 
-MODEL_HOME="$HOME/comfy-models"
+MODEL_HOME="$HOME/comfy-ui/models"
 STAGE="$MODEL_HOME/.hf_stage_ltx2"                     # persistent staging (enables resume)
 
 mkdir -p "$MODEL_HOME"/{checkpoints,text_encoders,loras,latent_upscale_models}

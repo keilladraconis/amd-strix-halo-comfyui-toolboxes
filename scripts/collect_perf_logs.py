@@ -102,7 +102,7 @@ def main():
             print(f"  {miopen_dir} not found (fresh start).")
 
         # 2. Start ComfyUI
-        comfy_outputs_dir = os.path.join(home_dir, "comfy-outputs")
+        comfy_outputs_dir = os.path.join(home_dir, "comfy-ui/output")
         comfy_cmd = [
             sys.executable, "main.py",
             "--port", str(server_port),

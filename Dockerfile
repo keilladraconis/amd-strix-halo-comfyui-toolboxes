@@ -13,6 +13,7 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 ENV PIP_NO_CACHE_DIR=1
 RUN printf 'source /opt/venv/bin/activate\n' > /etc/profile.d/venv.sh
+RUN sed -i 's/include-system-site-packages =.*/include-system-site-packages = true/' /opt/venv/pyvenv.cfg
 RUN python -m pip install --upgrade pip setuptools wheel
 
 # ── 3. ROCm + PyTorch ─────────────────────────────────────────────────────────
@@ -72,11 +73,14 @@ COPY workflows/input/ai-server-2.png /opt/ComfyUI/input/
 COPY workflows/input/example2.jpg /opt/ComfyUI/input/
 
 # ── 11. Workflows (change when adding/updating models or workflows) ────────────
-COPY workflows/API /opt/comfy-workflows
-COPY workflows/*.json /opt/ComfyUI/user/default/workflows/
+# Depth-1 JSONs → /opt/comfy-workflows/ (install_workflows.sh copies at runtime)
+# API JSONs     → /opt/comfy-workflows/API/  (used by benchmark scripts)
+COPY workflows/*.json /opt/comfy-workflows/
+COPY workflows/API /opt/comfy-workflows/API
 
 # ── 12. Helper scripts & model manager (change most often) ────────────────────
-COPY --chmod=755 scripts/set_extra_paths.sh /opt/
+COPY scripts/extra_model_paths.yaml /opt/ComfyUI/
+COPY --chmod=755 scripts/install_workflows.sh /opt/
 COPY --chmod=755 scripts/get_wan22.sh /opt/
 COPY --chmod=755 scripts/get_qwen_image.sh /opt/
 COPY --chmod=755 scripts/get_hunyuan15.sh /opt/

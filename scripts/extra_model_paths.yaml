@@ -1,0 +1,2 @@
+comfy_ui:
+    extra_custom_nodes_path: ~/comfy-ui/custom_nodes

@@ -42,7 +42,7 @@ This is a hobby project maintained in my spare time. If you find these toolboxes
 
 ## 1. Included Workflows
 
-The repository comes with a collection of ComfyUI workflows pre-validated on this hardware. You can find them in the `workflows/API` directory (mapped to `/opt/comfy-workflows` inside the container).
+The repository comes with a collection of ComfyUI workflows pre-validated on this hardware. UI-format workflows are baked into the image at `/opt/comfy-workflows/` and copied to `~/comfy-ui/user/default/workflows/` by `install_workflows`. API-format workflows live under `/opt/comfy-workflows/API/` and are used by the benchmark scripts.
 
 | Workflow | Type | Description |
 | :--- | :--- | :--- |
@@ -93,34 +93,35 @@ To update to a newer image (e.g., for newer ROCm nightly builds), run the same s
 ./refresh-toolbox.sh
 ```
 
-Your downloaded models are safe as long as they live in your home directory (`~/comfy-models`).
+Your downloaded models are safe as long as they live in your home directory (`~/comfy-ui/models`).
 
 ---
 
 ## 3. First Run Setup (Required)
 
-After entering the toolbox for the first time, you must configure the storage paths and download the model weights.
+After entering the toolbox for the first time, install the bundled workflows and download the model weights.
 
-### Step 1: Configure Persistent Paths
+### Step 1: Install Bundled Workflows
 
-Run the setup script to link ComfyUI's model directories to your home folder (`~/comfy-models`). This ensures you don't download 100GB+ of models every time you refresh the container.
+Copy the pre-validated workflows into your ComfyUI user directory:
 
 ```bash
-/opt/set_extra_paths.sh
+install_workflows
 ```
+
+This copies the UI-format workflow JSONs from `/opt/comfy-workflows/` to `~/comfy-ui/user/default/workflows/`. Re-run after any toolbox refresh to pick up new workflows.
 
 ### Step 2: Download Models
 
 Use the **Model Manager TUI** to download the required checkpoints and LoRAs for the included workflows. This tool handles the complex dependency chains (e.g., downloading base models before LoRAs).
 
 ```bash
-model_manager
+python /opt/model_manager.py
 ```
-*(Or `python /opt/model_manager.py`)*
 
-Select the workflow you want to run (e.g., "Wan 2.2 - Text to Video"), and the manager will download the necessary files to `~/comfy-models`.
+Select the workflow you want to run (e.g., "Wan 2.2 - Text to Video"), and the manager will download the necessary files to `~/comfy-ui/models`.
 
-> **Note:** The manager uses the helper scripts located in `/opt/` (like `get_qwen_image.sh`, `get_wan22.sh`) under the hood. You can run these manually if you prefer CLI arguments.
+> **Note:** The manager calls the helper scripts in `/opt/` (e.g. `get_qwen_image.sh`, `get_wan22.sh`) under the hood. You can run these directly if you prefer CLI arguments.
 
 ---
 
@@ -204,15 +205,15 @@ Add these boot parameters to enable unified memory while reserving a minimum of 
 | Parameter                    | Purpose                                                                                     |
 |------------------------------|---------------------------------------------------------------------------------------------|
 | `amd_iommu=off`              | Disables IOMMU for lower latency                                                            |
-| `amdgpu.gttsize=131072`      | Caps GPU unified memory to 128 GiB; 131072 MiB ÷ 1024 = 128 GiB                            |
-| `ttm.pages_limit=33554432`   | Caps pinned memory to 128 GiB; 33554432 × 4 KiB = 131072 MiB = 128 GiB                     |
+| `amdgpu.gttsize=126976`      | Caps GPU unified memory to 124 GiB; 126976 MiB ÷ 1024 = 124 GiB                            |
+| `ttm.pages_limit=32505856`   | Caps pinned memory to 124 GiB; 32505856 × 4 KiB = 126976 MiB = 124 GiB                     |
 
 Source: [Framework Community — AMD Strix Halo llama.cpp installation guide for Fedora 42](https://community.frame.work/t/amd-strix-halo-llama-cpp-installation-guide-for-fedora-42/75856#p-297775-h-11-add-kernel-parameters-using-grubby-4)
 
 **Apply the changes (Fedora):**
 
 ```bash
-sudo grubby --update-kernel=ALL --args='amd_iommu=off amdgpu.gttsize=131072 ttm.pages_limit=33554432'
+sudo grubby --update-kernel=ALL --args='amd_iommu=off amdgpu.gttsize=126976 ttm.pages_limit=32505856'
 sudo reboot
 ```
 
