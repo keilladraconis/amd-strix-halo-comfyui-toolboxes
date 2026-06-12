@@ -61,6 +61,22 @@ RUN git clone --depth=1 https://github.com/Lightricks/ComfyUI-LTXVideo && \
 RUN git clone --depth=1 https://github.com/evanspearman/ComfyMath && \
     chmod -R a+rwX ComfyMath
 
+# ── 8. Stable Diffusion WebUI Forge ───────────────────────────────────────────
+RUN git clone --depth=1 https://github.com/lllyasviel/stable-diffusion-webui-forge /opt/stable-diffusion-webui-forge && \
+    chmod -R a+rwX /opt/stable-diffusion-webui-forge
+WORKDIR /opt/stable-diffusion-webui-forge
+# Install Forge deps for Python 3.13:
+#  - Filter out Pillow (9.5.0 can't build on 3.13; already installed from ComfyUI)
+#  - Filter out torch/torchvision/torchaudio (already from ROCm nightlies)
+#  - Filter out blendmodes (pins Pillow<10 transitively); install it --no-deps
+#    since its only runtime needs are Pillow + numpy + aenum, all already present
+RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes)\b' requirements_versions.txt \
+      > /tmp/forge-reqs.txt && \
+    python -m pip install --prefer-binary -r /tmp/forge-reqs.txt && \
+    python -m pip install --no-deps blendmodes==2022 && \
+    python -m pip install --prefer-binary gradio-rangeslider && \
+    rm /tmp/forge-reqs.txt
+
 # ── 9. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
 COPY --chmod=0644 scripts/99-toolbox-banner.sh /etc/profile.d/99-toolbox-banner.sh
@@ -85,6 +101,7 @@ COPY --chmod=755 scripts/get_wan22.sh /opt/
 COPY --chmod=755 scripts/get_qwen_image.sh /opt/
 COPY --chmod=755 scripts/get_hunyuan15.sh /opt/
 COPY --chmod=755 scripts/get_ltx2.sh /opt/
+COPY --chmod=755 scripts/start_forge.sh /opt/
 COPY scripts/benchmark_workflows.py /opt/
 COPY scripts/collect_perf_logs.py /opt/
 COPY scripts/model_manager.py /opt/
