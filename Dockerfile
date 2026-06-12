@@ -18,9 +18,17 @@ RUN python -m pip install --upgrade pip setuptools wheel
 
 # ── 3. ROCm + PyTorch ─────────────────────────────────────────────────────────
 # (TheRock; include torchaudio for resolver)
+# Pinned to a known-good nightly: the 2026-06-12 build (rocm7.14.0a20260612)
+# segfaults on gfx1151 (rocminfo and torch.cuda init both dump core).
+# To bump: run ./find-good-nightly.sh and pass the printed --build-arg flags.
+ARG TORCH_VERSION=2.12.0a0+rocm7.13.0a20260323
+ARG TORCHAUDIO_VERSION=2.11.0a0+rocm7.13.0a20260323
+ARG TORCHVISION_VERSION=0.26.0a0+rocm7.13.0a20260323
 RUN python -m pip install \
     --index-url https://rocm.nightlies.amd.com/v2-staging/gfx1151 \
-    --pre torch torchaudio torchvision && \
+    --pre "torch==${TORCH_VERSION}" \
+          "torchaudio==${TORCHAUDIO_VERSION}" \
+          "torchvision==${TORCHVISION_VERSION}" && \
     find /opt/venv -type f -name "*.so" -exec strip -s {} + 2>/dev/null || true
 
 # ── 4. Core Python deps ───────────────────────────────────────────────────────

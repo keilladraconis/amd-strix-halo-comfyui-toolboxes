@@ -91,7 +91,7 @@ echo
 printf 'SSH tip: ssh -L 8000:localhost:8000 -L 7860:localhost:7860 user@host\n\n'
 
 # Aliases
-alias start_comfy_ui='cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+alias start_comfy_ui='mkdir -p $HOME/comfy-ui/custom_nodes && cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
 alias start_forge='/opt/start_forge.sh'
 alias install_workflows='/opt/install_workflows.sh'
 alias model_manager='python /opt/model_manager.py'
