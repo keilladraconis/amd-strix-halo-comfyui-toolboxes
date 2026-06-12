@@ -1,0 +1,40 @@
+name: promote-latest
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: "Tag to promote to 'latest' (e.g. dev, 20260419-143000)"
+        required: true
+        default: "dev"
+
+env:
+  IMAGE_REPO: kyuz0/amd-strix-halo-comfyui
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Pull, re-tag, and push as latest
+        run: |
+          set -eux
+          SOURCE="docker.io/${{ env.IMAGE_REPO }}:${{ github.event.inputs.source_tag }}"
+          TARGET="docker.io/${{ env.IMAGE_REPO }}:latest"
+
+          echo "Promoting $SOURCE → $TARGET"
+          docker pull "$SOURCE"
+          docker tag "$SOURCE" "$TARGET"
+          docker push "$TARGET"
+
+      - name: Summary
+        run: |
+          echo "### ✅ Promoted to latest" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Source:** \`${{ env.IMAGE_REPO }}:${{ github.event.inputs.source_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target:** \`${{ env.IMAGE_REPO }}:latest\`" >> $GITHUB_STEP_SUMMARY

@@ -87,13 +87,19 @@ Once inside, you have access to a full ROCm environment with PyTorch, ComfyUI, a
 
 ### 2.3. Updating the Toolbox
 
-To update to a newer image (e.g., for newer ROCm nightly builds), run the same script again:
+To update the container image (e.g., for newer ROCm nightly builds) without deleting your downloaded models (which should be stored in your HOME), use the provided refresh script found in the root of this repo. 
+
+You can run it interactively to select a channel, or pass the channel name as an argument (`latest` or `dev`):
 
 ```bash
-./refresh-toolbox.sh
+./refresh-toolbox.sh [latest|dev]
 ```
 
-Your downloaded models are safe as long as they live in your home directory (`~/comfy-ui/models`).
+- **`latest`**: Stable / verified working build (default, recommended).
+- **`dev`**: Development build (may be unstable).
+
+> [!WARNING]
+> This will **delete and recreate** the toolbox container. Any files stored *inside* the container system (e.g., `/opt`, `/usr`) will be lost. **Files in your home directory (`~`) are safe.**
 
 ---
 

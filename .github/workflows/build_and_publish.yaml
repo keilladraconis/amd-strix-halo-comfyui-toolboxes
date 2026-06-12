@@ -6,7 +6,7 @@ on:
       tag:
         description: "Image tag to publish (e.g. latest)"
         required: true
-        default: "latest"
+        default: "dev"
 
 env:
   IMAGE_REPO: kyuz0/amd-strix-halo-comfyui
