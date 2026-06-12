@@ -58,12 +58,6 @@ while [ : ]; do
     esac
 done
 
-
-LOCAL=0
-for arg in "$@"; do
-  [[ "$arg" == "--local" || "$arg" == "local" ]] && LOCAL=1
-done
-
 TOOLBOX_ARGS=(
   -- --device /dev/dri --device /dev/kfd
      --group-add video --group-add render
