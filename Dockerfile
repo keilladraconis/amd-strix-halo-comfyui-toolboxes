@@ -89,6 +89,14 @@ RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes|huggingface-hub)
     python -m pip install --prefer-binary gradio-rangeslider && \
     rm /tmp/forge-reqs.txt
 
+# Make the venv writable by the running (non-root) toolbox user, like every
+# other install target above. Custom Nodes install node dependencies into
+# the venv at runtime; if it isn't writable, pip falls back to
+# `pip install --user`, which pip then rejects ("will not install to the user
+# site because it will lack sys.path precedence ..."). Toolbox containers are
+# per-user, so a world-writable venv is not a multi-tenant concern.
+RUN chmod -R a+rwX /opt/venv
+
 # ── 9. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
 COPY --chmod=0644 scripts/99-toolbox-banner.sh /etc/profile.d/99-toolbox-banner.sh
@@ -111,7 +119,6 @@ COPY workflows/*.json /opt/comfy-workflows/
 COPY workflows/API /opt/comfy-workflows/API
 
 # ── 12. Helper scripts & model manager (change most often) ────────────────────
-COPY scripts/extra_model_paths.yaml /opt/ComfyUI/
 COPY --chmod=755 scripts/install_workflows.sh /opt/
 COPY --chmod=755 scripts/get_wan22.sh /opt/
 COPY --chmod=755 scripts/get_qwen_image.sh /opt/
