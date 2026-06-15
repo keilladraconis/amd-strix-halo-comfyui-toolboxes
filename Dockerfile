@@ -18,17 +18,19 @@ RUN python -m pip install --upgrade pip setuptools wheel
 
 # ── 3. ROCm + PyTorch ─────────────────────────────────────────────────────────
 # (TheRock; include torchaudio for resolver)
-# Pinned to a known-good nightly: the 2026-06-12 build (rocm7.14.0a20260612)
-# segfaults on gfx1151 (rocminfo and torch.cuda init both dump core).
-# To bump: run ./find-good-nightly.sh and pass the printed --build-arg flags.
-ARG TORCH_VERSION=2.12.0a0+rocm7.13.0a20260323
-ARG TORCHAUDIO_VERSION=2.11.0a0+rocm7.13.0a20260323
-ARG TORCHVISION_VERSION=0.26.0a0+rocm7.13.0a20260323
+# Defaults to the latest nightly. Some nightlies are broken on gfx1151 (e.g.
+# 2026-06-12 / rocm7.14.0a20260612 segfaults: rocminfo and torch.cuda init both
+# dump core). To pin a known-good build: run ./find-good-nightly.sh, which
+# writes nightly-overrides.conf; ./refresh-toolbox.sh --local then passes it
+# here as --build-arg. Empty arg => unpinned latest.
+ARG TORCH_VERSION=
+ARG TORCHAUDIO_VERSION=
+ARG TORCHVISION_VERSION=
 RUN python -m pip install \
     --index-url https://rocm.nightlies.amd.com/v2-staging/gfx1151 \
-    --pre "torch==${TORCH_VERSION}" \
-          "torchaudio==${TORCHAUDIO_VERSION}" \
-          "torchvision==${TORCHVISION_VERSION}" && \
+    --pre "torch${TORCH_VERSION:+==$TORCH_VERSION}" \
+          "torchaudio${TORCHAUDIO_VERSION:+==$TORCHAUDIO_VERSION}" \
+          "torchvision${TORCHVISION_VERSION:+==$TORCHVISION_VERSION}" && \
     find /opt/venv -type f -name "*.so" -exec strip -s {} + 2>/dev/null || true
 
 # ── 4. Core Python deps ───────────────────────────────────────────────────────
