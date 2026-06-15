@@ -64,9 +64,24 @@ TOOLBOX_ARGS=(
      --security-opt seccomp=unconfined
 )
 
+OVERRIDES_FILE="${OVERRIDES_FILE:-$SCRIPT_DIR/nightly-overrides.conf}"
+
 if [[ "$LOCAL" == "1" ]]; then
+  # Apply a pinned-nightly override written by find-good-nightly.sh, if present.
+  # Each non-comment KEY=VALUE line becomes a --build-arg.
+  BUILD_ARGS=()
+  if [[ -f "$OVERRIDES_FILE" ]]; then
+    echo "Applying nightly overrides from $OVERRIDES_FILE:"
+    while IFS= read -r line; do
+      [[ "$line" =~ ^[[:space:]]*# ]] && continue
+      [[ -z "${line// }" ]] && continue
+      echo "  $line"
+      BUILD_ARGS+=(--build-arg "$line")
+    done < "$OVERRIDES_FILE"
+  fi
+
   echo "Building local image from $SCRIPT_DIR/Dockerfile ..."
-  podman build -t "$IMAGE" "$SCRIPT_DIR"
+  podman build "${BUILD_ARGS[@]}" -t "$IMAGE" "$SCRIPT_DIR"
 
   echo "Recreating toolbox $NAME from local build ..."
   toolbox rm -f "$NAME" 2>/dev/null || true
@@ -74,6 +89,11 @@ if [[ "$LOCAL" == "1" ]]; then
 
   echo "Done."
   exit 0
+fi
+
+if [[ -f "$OVERRIDES_FILE" ]]; then
+  echo "Note: $OVERRIDES_FILE exists but only applies to --local builds;" >&2
+  echo "      this pull path uses the prebuilt image as-is." >&2
 fi
 
 TOOLBOX_NAME="amd-strix-halo-comfyui"

@@ -15,6 +15,10 @@ PYTAG="cp313"
 BASE_IMAGE="registry.fedoraproject.org/fedora:rawhide"
 MAX_CANDIDATES=0
 SMOKE_TIMEOUT=120
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Where the result is written for refresh-toolbox.sh --local to consume.
+# Env-overridable so unit tests write to a tempfile instead of the checkout.
+OVERRIDES_FILE="${OVERRIDES_FILE:-$SCRIPT_DIR/nightly-overrides.conf}"
 
 usage() {
   cat <<'USAGE'
@@ -120,6 +124,23 @@ print_build_args() {
   echo "    -t docker.io/kyuz0/amd-strix-halo-comfyui:latest ."
 }
 
+# Write the winning triple to OVERRIDES_FILE (gitignored) so the dumbest
+# possible consumer just runs ./refresh-toolbox.sh --local. Called from both
+# success paths: the full bisect result and report_partial's good-known branch.
+write_overrides() {
+  local suffix="$1" tb="$2" ab="$3" vb="$4"
+  cat >"$OVERRIDES_FILE" <<EOF
+# Written by find-good-nightly.sh — newest ROCm nightly that passed the GPU
+# smoke test. Consumed by ./refresh-toolbox.sh --local. To revert to the
+# Dockerfile defaults, delete this file. This file is gitignored.
+TORCH_VERSION=${tb}+rocm${suffix}
+TORCHAUDIO_VERSION=${ab}+rocm${suffix}
+TORCHVISION_VERSION=${vb}+rocm${suffix}
+EOF
+  echo
+  echo "Wrote ${OVERRIDES_FILE##*/} — apply it with: ./refresh-toolbox.sh --local"
+}
+
 # ── Search state ──────────────────────────────────────────────────────────
 # CAND: "SUFFIX TORCH TORCHAUDIO TORCHVISION" lines, newest first (index 0
 # = newest). BEST_GOOD is the smallest (newest) index confirmed good so far.
@@ -138,6 +159,7 @@ report_partial() {
     read -r suffix tb ab vb <<<"${CAND[$BEST_GOOD]}"
     echo "Search stopped early. Newest CONFIRMED good build so far:"
     print_build_args "$suffix" "$tb" "$ab" "$vb"
+    write_overrides "$suffix" "$tb" "$ab" "$vb"
     echo
     echo "Note: a newer good nightly may exist (bracket not fully bisected);"
     echo "re-run with a higher --max or test an explicit SUFFIX."
@@ -191,6 +213,7 @@ search() {
   done
   read -r suffix tb ab vb <<<"${CAND[$g]}"
   print_build_args "$suffix" "$tb" "$ab" "$vb"
+  write_overrides "$suffix" "$tb" "$ab" "$vb"
 }
 
 main() {
