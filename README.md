@@ -40,15 +40,17 @@ This is a hobby project maintained in my spare time. If you find these toolboxes
 
 ## 1. Included Workflows
 
-The repository comes with a collection of ComfyUI workflows pre-validated on this hardware. You can find them in the `workflows/API` directory (mapped to `/opt/comfy-workflows` inside the container).
+The repository comes with a collection of ComfyUI workflows bundled into the image. API benchmark workflows are also available in `workflows/API` (mapped to `/opt/comfy-workflows` inside the container).
 
 | Workflow | Type | Description |
 | :--- | :--- | :--- |
 | **HunyuanVideo 1.5** | I2V / T2V | 4-step LoRA, 720p resolution. Configured for 32GB. |
-| **MiniMax-H3** | T2V / I2V / R2V / Turbo T2V / Turbo I2V | Open-weight video generation with native stereo audio; Turbo LoRA workflows use 4–8 sampling steps. |
-| **Qwen Image** | T2I | Qwen Image 2512 (FP8) & Lightning LoRA (4 steps). |
-| **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 (FP8) & Lightning LoRA (4/20 steps). |
+| **MiniMax-H3** | T2V / I2V / R2V / Turbo / GGUF | Open-weight video generation with native stereo audio; separate Turbo and low-memory GGUF workflows are included. |
+| **Qwen Image** | T2I | Qwen Image 2512 in BF16, FP8, and GGUF Q4_K_M, with optional 4-step Lightning LoRA. |
+| **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 in BF16, FP8, and GGUF Q4_K_M, with 4/20-step workflows. |
 | **Wan 2.2** | I2V / T2V | 14B model with 4-step Lightning LoRA. |
+
+The GGUF workflows use the H3-capable [`molbal/ComfyUI-GGUF`](https://github.com/molbal/ComfyUI-GGUF) node pack. The Qwen GGUF downloader includes the matching Qwen2.5-VL text encoder and vision projector; the MiniMax-H3 GGUF downloader uses Unsloth's Q2 low-memory model pair. These workflows are currently part of the development channel pending hardware validation.
 
 ---
 
