@@ -50,7 +50,7 @@ The repository comes with a collection of ComfyUI workflows bundled into the ima
 | **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 in BF16, FP8, and GGUF Q4_K_M, with 4/20-step workflows. |
 | **Wan 2.2** | I2V / T2V | 14B model with 4-step Lightning LoRA. |
 
-The GGUF workflows use the H3-capable [`molbal/ComfyUI-GGUF`](https://github.com/molbal/ComfyUI-GGUF) node pack. The Qwen GGUF downloader includes the matching Qwen2.5-VL text encoder and vision projector; the MiniMax-H3 GGUF downloader uses Unsloth's Q2 low-memory model pair. These workflows are currently part of the development channel pending hardware validation.
+The GGUF workflows use [`kyuz0/ComfyUI-GGUF-H3`](https://github.com/kyuz0/ComfyUI-GGUF-H3), based on `molbal/ComfyUI-GGUF` with support for Unsloth's metadata-free MiniMax-H3 text encoders. The Qwen GGUF downloader includes the matching Qwen2.5-VL text encoder and vision projector; the MiniMax-H3 GGUF downloader uses Unsloth's Q2 low-memory model pair. These workflows are currently part of the development channel pending hardware validation.
 
 ---
 
