@@ -45,12 +45,15 @@ The repository comes with a collection of ComfyUI workflows bundled into the ima
 | Workflow | Type | Description |
 | :--- | :--- | :--- |
 | **HunyuanVideo 1.5** | I2V / T2V | 4-step LoRA, 720p resolution. Configured for 32GB. |
-| **MiniMax-H3** | T2V / I2V / R2V / Turbo / GGUF | Open-weight video generation with native stereo audio; separate Turbo and low-memory GGUF workflows are included. |
+| **LTX-2.3** | T2V / I2V / GGUF | BF16 workflows use either the dev model with the distilled 1.1 LoRA or the distilled checkpoint without LoRAs; 128GB is recommended. Q6_K GGUF copies provide the same two choices with lower memory use. |
+| **MiniMax-H3** | T2V / I2V / R2V / Turbo / GGUF / GGUF Turbo | Open-weight video generation with native stereo audio; separate Turbo, low-memory GGUF, and GGUF Turbo workflows are included. |
 | **Qwen Image** | T2I | Qwen Image 2512 in BF16, FP8, and GGUF Q4_K_M, with optional 4-step Lightning LoRA. |
 | **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 in BF16, FP8, and GGUF Q4_K_M, with 4/20-step workflows. |
 | **Wan 2.2** | I2V / T2V | 14B model with 4-step Lightning LoRA. |
 
-The GGUF workflows use [`kyuz0/ComfyUI-GGUF-H3`](https://github.com/kyuz0/ComfyUI-GGUF-H3), based on `molbal/ComfyUI-GGUF` with support for Unsloth's metadata-free MiniMax-H3 text encoders. The Qwen GGUF downloader includes the matching Qwen2.5-VL text encoder and vision projector; the MiniMax-H3 GGUF downloader uses Unsloth's Q2 low-memory model pair. These workflows are currently part of the development channel pending hardware validation.
+The GGUF workflows use [`kyuz0/ComfyUI-GGUF-H3`](https://github.com/kyuz0/ComfyUI-GGUF-H3), based on `molbal/ComfyUI-GGUF` with support for Unsloth's metadata-free MiniMax-H3 text encoders. The Qwen GGUF downloader includes the matching Qwen2.5-VL text encoder and vision projector; the MiniMax-H3 downloader uses Unsloth's Q2 low-memory model pair; and LTX-2.3 uses Unsloth's Q6_K diffusion models with its matching Gemma encoder, connector, projector, and VAEs. These workflows are currently part of the development channel pending hardware validation.
+
+LTX-2.3 defaults to BF16 on Strix Halo because gfx1151 has native BF16 matrix support. FP8 checkpoints can load, but they are not downloaded or selected automatically; the Q6_K GGUF workflows are the bundled lower-memory alternative.
 
 ---
 

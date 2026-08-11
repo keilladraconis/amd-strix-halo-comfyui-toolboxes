@@ -550,7 +550,7 @@
       },
       "widgets_values": [
         "simple",
-        8,
+        20,
         1
       ]
     },
@@ -783,9 +783,9 @@
       "properties": {
         "Node name for S&R": "KSamplerSelect"
       },
-      "title": "Euler sampler",
+      "title": "res_multistep sampler",
       "widgets_values": [
-        "euler"
+        "res_multistep"
       ]
     },
     {

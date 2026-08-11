@@ -189,19 +189,51 @@ MODEL_FAMILIES = [
         ]
     },
 
-    # --- LTX-2 ---
+    # --- LTX-2.3 ---
     {
-        "name": "LTX-2 (19B) - Video Generation",
-        "keywords": ["LTX"],
+        "name": "LTX-2.3 BF16 Dev + Distilled LoRA",
+        "keywords": ["LTX-2.3", "BF16", "Dev", "LoRA"],
+        "exclude_keywords": ["GGUF"],
         "script": "get_ltx2.sh",
         "variants": [
             {
-                "name": "Standard (BF16 Checkpoint + FP4 Text Enc)", 
-                "args": ["common", "checkpoint", "lora"]
-            },
+                "name": "Native BF16 checkpoint + compact distilled 1.1 LoRA (128GB recommended)",
+                "args": ["bf16-common", "bf16-dev", "bf16-loras"]
+            }
+        ]
+    },
+    {
+        "name": "LTX-2.3 BF16 Distilled (No LoRA)",
+        "keywords": ["LTX-2.3", "BF16", "Distilled", "No-LoRA"],
+        "exclude_keywords": ["GGUF", "Dev"],
+        "script": "get_ltx2.sh",
+        "variants": [
             {
-                "name": "FP8 (Compressed Checkpoint + FP4 Text Enc)", 
-                "args": ["common", "checkpoint fp8", "lora"]
+                "name": "Native BF16 distilled 1.1 checkpoint, no LoRAs (128GB recommended)",
+                "args": ["bf16-common", "bf16-distilled"]
+            }
+        ]
+    },
+    {
+        "name": "LTX-2.3 GGUF Q6_K Dev + Distilled LoRA",
+        "keywords": ["LTX-2.3", "GGUF", "Q6_K", "Dev", "LoRA"],
+        "script": "get_ltx2.sh",
+        "variants": [
+            {
+                "name": "Q6_K dev model + full-rank distilled 1.1 LoRA (lower memory)",
+                "args": ["gguf-common", "gguf-dev", "gguf-lora"]
+            }
+        ]
+    },
+    {
+        "name": "LTX-2.3 GGUF Q6_K Distilled (No LoRA)",
+        "keywords": ["LTX-2.3", "GGUF", "Q6_K", "Distilled", "No-LoRA"],
+        "exclude_keywords": ["Dev"],
+        "script": "get_ltx2.sh",
+        "variants": [
+            {
+                "name": "Q6_K distilled model, no LoRAs (lower memory)",
+                "args": ["gguf-common", "gguf-distilled"]
             }
         ]
     },
@@ -246,6 +278,7 @@ MODEL_FAMILIES = [
     {
         "name": "MiniMax-H3 Turbo T2V",
         "keywords": ["minimax-h3", "turbo", "t2v"],
+        "exclude_keywords": ["gguf"],
         "script": "get_minimax_h3.sh",
         "variants": [
             {
@@ -257,6 +290,7 @@ MODEL_FAMILIES = [
     {
         "name": "MiniMax-H3 Turbo I2V",
         "keywords": ["minimax-h3", "turbo", "i2v"],
+        "exclude_keywords": ["gguf"],
         "script": "get_minimax_h3.sh",
         "variants": [
             {
@@ -266,8 +300,31 @@ MODEL_FAMILIES = [
         ]
     },
     {
+        "name": "MiniMax-H3 GGUF Turbo T2V",
+        "keywords": ["minimax-h3", "gguf", "turbo", "t2v"],
+        "script": "get_minimax_h3.sh",
+        "variants": [
+            {
+                "name": "GGUF model and encoder + Turbo LoRA + shared VAEs",
+                "args": ["gguf-common", "gguf-fl2va", "turbo"]
+            }
+        ]
+    },
+    {
+        "name": "MiniMax-H3 GGUF Turbo I2V",
+        "keywords": ["minimax-h3", "gguf", "turbo", "i2v"],
+        "script": "get_minimax_h3.sh",
+        "variants": [
+            {
+                "name": "GGUF model and encoder + Turbo LoRA + shared VAEs",
+                "args": ["gguf-common", "gguf-fl2va", "turbo"]
+            }
+        ]
+    },
+    {
         "name": "MiniMax-H3 GGUF T2V",
         "keywords": ["minimax-h3", "gguf", "t2v"],
+        "exclude_keywords": ["turbo"],
         "script": "get_minimax_h3.sh",
         "variants": [
             {
@@ -279,6 +336,7 @@ MODEL_FAMILIES = [
     {
         "name": "MiniMax-H3 GGUF I2V",
         "keywords": ["minimax-h3", "gguf", "i2v"],
+        "exclude_keywords": ["turbo"],
         "script": "get_minimax_h3.sh",
         "variants": [
             {
@@ -290,6 +348,7 @@ MODEL_FAMILIES = [
     {
         "name": "MiniMax-H3 GGUF R2V",
         "keywords": ["minimax-h3", "gguf", "r2v"],
+        "exclude_keywords": ["turbo"],
         "script": "get_minimax_h3.sh",
         "variants": [
             {
