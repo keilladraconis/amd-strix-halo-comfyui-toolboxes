@@ -96,6 +96,12 @@ case "${1:-}" in
       "loras"
     ;;
   gguf-common)
+    legacy_audio_vae="$MODEL_HOME/vae/ltx-2.3-22b-dev_audio_vae.safetensors"
+    audio_vae="$MODEL_HOME/checkpoints/ltx-2.3-22b-dev_audio_vae.safetensors"
+    if [[ -f "$legacy_audio_vae" && ! -f "$audio_vae" ]]; then
+      echo "→ Moving LTX-2.3 audio VAE to the checkpoints directory required by LTXVAudioVAELoader"
+      mv "$legacy_audio_vae" "$audio_vae"
+    fi
     download_if_missing \
       "$GGUF_GEMMA_REPO" \
       "gemma-3-12b-it-qat-UD-Q4_K_XL.gguf" \
@@ -116,7 +122,7 @@ case "${1:-}" in
     download_if_missing \
       "$GGUF_REPO" \
       "vae/ltx-2.3-22b-dev_audio_vae.safetensors" \
-      "vae"
+      "checkpoints"
     download_if_missing \
       "$LTX_REPO" \
       "ltx-2.3-spatial-upscaler-x2-1.1.safetensors" \
