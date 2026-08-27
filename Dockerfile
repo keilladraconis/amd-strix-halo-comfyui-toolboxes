@@ -39,8 +39,8 @@ RUN python -m pip install gguf transformers==4.56.2
 
 # ── Source refresh barrier ────────────────────────────────────────────────────
 # Every `git clone --depth=1` below is cached on its command string, which never
-# changes — so podman keeps whatever ComfyUI, node packs, studios and Forge it
-# first cloned, indefinitely. Bumping this arg invalidates this layer and, since
+# changes — so podman keeps whatever ComfyUI and the studios it first
+# cloned, indefinitely. Bumping this arg invalidates this layer and, since
 # layer caching is sequential, every clone after it.
 #
 #   ./refresh-toolbox.sh --local --refresh-sources
@@ -81,41 +81,6 @@ RUN python -m pip install -r requirements.txt && \
 # start_comfy_ui — and installs each pack's own requirements.txt into the venv,
 # which is why the venv is made world-writable below.
 
-# ── 8. Stable Diffusion WebUI Forge ───────────────────────────────────────────
-RUN git clone --depth=1 https://github.com/lllyasviel/stable-diffusion-webui-forge /opt/stable-diffusion-webui-forge && \
-    chmod -R a+rwX /opt/stable-diffusion-webui-forge
-WORKDIR /opt/stable-diffusion-webui-forge
-# Install Forge deps for Python 3.13:
-#  - Filter out Pillow (9.5.0 can't build on 3.13; already installed from ComfyUI)
-#  - Filter out torch/torchvision/torchaudio (already from ROCm nightlies)
-#  - Filter out blendmodes (pins Pillow<10 transitively); install it --no-deps
-#    since its only runtime needs are Pillow + numpy + aenum, all already present
-#  - Filter out huggingface-hub (pins ==0.26.2, which predates the `hf` CLI the
-#    get_*.sh model scripts need; already installed >=0.34 from ComfyUI step)
-#  - Filter out numpy (pins ==1.26.2, which has no cp313 wheel and silently
-#    downgraded the numpy 2.x that torch and ComfyUI are built against, for the
-#    whole shared venv)
-#  - Filter out transformers (pins ==4.46.1, downgrading the ==4.56.2 installed
-#    in §4 for the whole venv). NOTE: this does not fully restore 4.56.2 --
-#    Forge's peft==0.13.2 / tokenizers stack still drags the resolver down to
-#    4.49.0. Filtering only removes the explicit downgrade. ComfyUI-LTXVideo
-#    needs >=4.50 and so still fails to import; see the shared-venv conflict
-#    between Forge's 2024-era pins and current ComfyUI node packs.
-#  - Filter out scikit-image (pins ==0.21.0, no cp313 wheel). Building it from
-#    source fails on current rawhide: its meson build compiles pythran-generated
-#    C++ with -std=c++14, and GCC 16's libstdc++ no longer exposes the C++17
-#    std::is_integral_v that pythran's headers use. Reinstalled from a wheel
-#    below — Forge imports skimage in modules/processing.py and 4 other files.
-#    Pinned: unpinned resolves to 0.26.0, which drags numpy to 2.5.2 and breaks
-#    numba (requires numpy<2.5).
-RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes|huggingface-hub|numpy|scikit-image|transformers)\b' requirements_versions.txt \
-      > /tmp/forge-reqs.txt && \
-    python -m pip install --prefer-binary -r /tmp/forge-reqs.txt && \
-    python -m pip install --no-deps blendmodes==2022 && \
-    python -m pip install --prefer-binary gradio-rangeslider && \
-    python -m pip install --prefer-binary "scikit-image==0.25.2" && \
-    rm /tmp/forge-reqs.txt
-
 # Make the venv writable by the running (non-root) toolbox user, like every
 # other install target above. Custom Nodes install node dependencies into
 # the venv at runtime; if it isn't writable, pip falls back to
@@ -127,9 +92,8 @@ RUN chmod -R a+rwX /opt/venv
 # Constraints for runtime custom-node dependency installs. Node packs list
 # their own requirements, and pip will happily satisfy them by replacing what
 # the image carefully pinned — observed: transformers 4.56.2 -> 5.16.1 and
-# pillow -> 12.3.0 (which breaks Forge's gradio). The worst case is a pack
-# listing `torch`, which would swap the ROCm nightly for a generic PyPI wheel
-# and take GPU support with it.
+# pillow -> 12.3.0. The worst case is a pack listing `torch`, which would swap
+# the ROCm nightly for a generic PyPI wheel and take GPU support with it.
 #
 # Recorded from what is actually installed, so it tracks the nightly in use.
 # Only load-bearing packages are listed: a pack needing anything else resolves
@@ -138,14 +102,14 @@ RUN chmod -R a+rwX /opt/venv
 RUN /opt/venv/bin/python - <<'PY' > /opt/venv/image-constraints.txt
 import importlib.metadata as md
 for pkg in ("torch", "torchvision", "torchaudio", "numpy",
-            "transformers", "pillow", "gradio"):
+            "transformers", "pillow"):
     try:
         print(f"{pkg}=={md.version(pkg)}")
     except md.PackageNotFoundError:
         pass
 PY
 
-# ── 9. Static profile.d scripts (rarely change) ───────────────────────────────
+# ── 8. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
 COPY --chmod=0644 scripts/99-toolbox-banner.sh /etc/profile.d/99-toolbox-banner.sh
 COPY --chmod=0644 scripts/zz-venv-last.sh /etc/profile.d/zz-venv-last.sh
@@ -155,18 +119,18 @@ RUN printf 'ulimit -S -c 0\n' > /etc/profile.d/90-nocoredump.sh && chmod 0644 /e
 RUN printf 'if ! infocmp "$TERM" >/dev/null 2>&1; then export TERM=xterm-256color; fi\n' \
       > /etc/profile.d/00-term-fallback.sh && chmod 0644 /etc/profile.d/00-term-fallback.sh
 
-# ── 10. Input images (rarely change) ─────────────────────────────────────────
+# ── 9. Input images (rarely change) ─────────────────────────────────────────
 COPY workflows/input/ai-server.jpg /opt/ComfyUI/input/
 COPY workflows/input/ai-server-2.png /opt/ComfyUI/input/
 COPY workflows/input/example2.jpg /opt/ComfyUI/input/
 
-# ── 11. Workflows (change when adding/updating models or workflows) ────────────
+# ── 10. Workflows (change when adding/updating models or workflows) ────────────
 # Depth-1 JSONs → /opt/comfy-workflows/ (install_workflows.sh copies at runtime)
 # API JSONs     → /opt/comfy-workflows/API/  (used by benchmark scripts)
 COPY workflows/*.json /opt/comfy-workflows/
 COPY workflows/API /opt/comfy-workflows/API
 
-# ── 12. Helper scripts & model manager (change most often) ────────────────────
+# ── 11. Helper scripts & model manager (change most often) ────────────────────
 COPY --chmod=755 scripts/install_workflows.sh /opt/
 COPY --chmod=755 scripts/install_custom_nodes.sh /opt/
 COPY --chmod=755 scripts/get_wan22.sh /opt/
@@ -174,7 +138,6 @@ COPY --chmod=755 scripts/get_qwen_image.sh /opt/
 COPY --chmod=755 scripts/get_hunyuan15.sh /opt/
 COPY --chmod=755 scripts/get_ltx2.sh /opt/
 COPY --chmod=755 scripts/get_minimax_h3.sh /opt/
-COPY --chmod=755 scripts/start_forge.sh /opt/
 COPY scripts/benchmark_workflows.py /opt/
 COPY scripts/collect_perf_logs.py /opt/
 COPY scripts/model_manager.py /opt/

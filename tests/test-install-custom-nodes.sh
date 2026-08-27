@@ -63,6 +63,7 @@ run() {
          CONSTRAINTS="${CONSTRAINTS_OVERRIDE:-$env/constraints.txt}" \
          GIT_LOG="$env/git.log" \
          PIP_LOG="$env/pip.log" \
+         CONSTRAINTS_COPY="${CONSTRAINTS_COPY:-$env/seen.txt}" \
          FAIL_MATCH="${FAIL_MATCH:-}" \
          bash "$SCRIPT" "$@" 2>&1)"
   RC=$?
@@ -85,8 +86,27 @@ check "packs land in the ComfyUI base directory, not /opt" "0" \
 # --- the image's pins are protected from node requirements -------------------
 # A pack listing `torch` must not be able to replace the ROCm nightly, and one
 # listing `transformers` must not blow past the image's pin.
-check "dependency installs pass the image constraints file to pip" "6" \
-  "$(grep -c -- "-c $E/constraints.txt" "$E/pip.log")"
+check "dependency installs pass a constraints file to pip" "6" \
+  "$(grep -c -- '-c /tmp/' "$E/pip.log")"
+
+# The effective constraints must carry BOTH the image's pins and the known-bad
+# combination pins, or a pack resolves a dependency that breaks it.
+E3="$(new_env)"
+cat >"$E3/bin/py" <<'STUB'
+#!/usr/bin/env bash
+# Capture the constraints file pip was handed, before the script deletes it.
+for i in $(seq 1 $#); do
+  if [[ "${!i}" == "-c" ]]; then j=$((i+1)); cp "${!j}" "$CONSTRAINTS_COPY" 2>/dev/null; fi
+done
+echo "py $*" >>"$PIP_LOG"
+STUB
+chmod +x "$E3/bin/py"
+CONSTRAINTS_COPY="$E3/seen.txt" FAIL_MATCH="" run "$E3" install
+check "the image's pins reach pip" "0" \
+  "$(grep -qF 'torch==2.13.0' "$E3/seen.txt"; echo $?)"
+check "the kornia pin that keeps ComfyUI-LTXVideo importable reaches pip" "0" \
+  "$(grep -qF 'kornia<0.8.2' "$E3/seen.txt"; echo $?)"
+rm -rf "$E3"
 
 E2="$(new_env)"
 CONSTRAINTS_OVERRIDE="$E2/nonexistent.txt" FAIL_MATCH="" run "$E2" install

@@ -85,12 +85,12 @@ if [[ "$LOCAL" == "1" ]]; then
   fi
 
   # The Dockerfile's `git clone --depth=1` layers are cached on a command string
-  # that never changes, so ComfyUI, the custom nodes, the studios and Forge stay
+  # that never changes, so ComfyUI and the studios stay
   # frozen at whatever was first cloned. Bumping SOURCES_EPOCH busts the refresh
   # barrier and re-clones them all. Everything below the barrier rebuilds too;
   # the ROCm/PyTorch install sits above it and is preserved.
   if [[ "${REFRESH_SOURCES:-0}" == "1" ]]; then
-    echo "Refreshing sources: re-cloning ComfyUI, custom nodes, studios and Forge."
+    echo "Refreshing sources: re-cloning ComfyUI and the studios."
     BUILD_ARGS+=(--build-arg "SOURCES_EPOCH=$(date +%s)")
   fi
 

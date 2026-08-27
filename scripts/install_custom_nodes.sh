@@ -27,6 +27,16 @@ STAMP="${STAMP:-/opt/venv/.custom-nodes-deps}"
 # unconstrained, as they did before.
 CONSTRAINTS="${CONSTRAINTS:-/opt/venv/image-constraints.txt}"
 
+# Known-bad upstream combinations, applied on top of the image constraints.
+# A pack listing a dependency unpinned can otherwise resolve to a release that
+# breaks it. Each entry needs a comment saying which pack and which symbol.
+NODE_PINS=(
+  # ComfyUI-LTXVideo's pyramid_blending.py does
+  #   from kornia.geometry.transform.pyramid import (pad, ...)
+  # and kornia stopped re-exporting `pad` from that module in 0.8.2.
+  "kornia<0.8.2"
+)
+
 REPOS=(
   https://github.com/cubiq/ComfyUI_essentials
   https://github.com/kyuz0/ComfyUI-AMDGPUMonitor
@@ -101,13 +111,18 @@ done
 # Reinstall deps when a clone changed, when the venv was reset (stamp gone), or
 # on an explicit update.
 if [[ "$changed" == "1" || ! -f "$STAMP" || "$MODE" == "update" ]]; then
-  pip_args=(--quiet --prefer-binary)
+  # Effective constraints = the image's pins plus the known-bad-combination
+  # pins above. Written to a temp file so pip sees them as one set.
+  effective="$(mktemp)"
+  trap 'rm -f "$effective"' EXIT
   if [[ -f "$CONSTRAINTS" ]]; then
-    pip_args+=(-c "$CONSTRAINTS")
+    cat "$CONSTRAINTS" > "$effective"
   else
     echo "⚠ No constraints file at $CONSTRAINTS — node dependencies may replace" >&2
     echo "  the image's pinned torch/transformers/numpy/pillow." >&2
   fi
+  printf '%s\n' "${NODE_PINS[@]}" >> "$effective"
+  pip_args=(--quiet --prefer-binary -c "$effective")
 
   echo
   echo "Installing custom node dependencies into the venv ..."

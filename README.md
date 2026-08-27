@@ -277,7 +277,7 @@ toolbox enter amd-strix-halo-comfyui
 
 #### Refreshing the bundled sources
 
-ComfyUI, both studios and Forge are `git clone --depth=1`d during the build. Podman caches those layers on a command string that never changes, so a local build keeps whatever it first cloned — indefinitely. A months-old ComfyUI shows up as missing-node errors when you load a workflow that needs a recent one. (Custom node packs are exempt: they are cloned at runtime by `install_custom_nodes`, so `update_custom_nodes` refreshes those instead.)
+ComfyUI and both studios are `git clone --depth=1`d during the build. Podman caches those layers on a command string that never changes, so a local build keeps whatever it first cloned — indefinitely. A months-old ComfyUI shows up as missing-node errors when you load a workflow that needs a recent one. (Custom node packs are exempt: they are cloned at runtime by `install_custom_nodes`, so `update_custom_nodes` refreshes those instead.)
 
 To re-clone them all:
 

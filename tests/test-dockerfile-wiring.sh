@@ -60,20 +60,20 @@ check "refresh-toolbox.sh passes SOURCES_EPOCH as a build arg" "0" \
 check "refresh-toolbox.sh accepts --refresh-sources in getopt" "0" \
   "$(grep -qE 'getopt .*--long .*refresh-sources' refresh-toolbox.sh; echo $?)"
 
-# Forge's requirements_versions.txt carries pins that break on Python 3.13 and
-# current rawhide. Each one we filter out is either already installed by an
-# earlier step or must be reinstalled here — filtering without reinstalling
-# silently removes a package Forge imports at runtime.
-forge_filter=$(grep -oP "grep -ivE '\^\(\K[^)]+" Dockerfile)
-for pkg in numpy scikit-image transformers; do
-  check "Forge deps filter excludes the incompatible $pkg pin" "0" \
-    "$(grep -qE "(^|\|)${pkg}(\||$)" <<<"$forge_filter"; echo $?)"
-done
+# Forge was removed: its 2024-era pins (peft 0.13.2, kornia 0.6.7, transformers
+# 4.46.1) shared one venv with ComfyUI and held the resolver below what current
+# node packs need. Nothing should reintroduce it or its launcher.
+check "Forge is not reintroduced into the image" "" \
+  "$(grep -inE 'forge' Dockerfile)"
+check "the Forge launcher is gone" "1" \
+  "$([[ -e scripts/start_forge.sh ]]; echo $?)"
+check "no Forge alias survives in the banner" "" \
+  "$(grep -inE 'start_forge|7860' scripts/99-toolbox-banner.sh)"
 
-# Forge imports skimage (modules/processing.py and 4 others), so filtering the
-# pin obliges us to put a working scikit-image back.
-check "a replacement scikit-image is installed after filtering its pin" "0" \
-  "$(grep -qE 'pip install .*scikit-image==' Dockerfile; echo $?)"
+# The constraints file is what stops a node pack's requirements from replacing
+# the image's pinned torch/transformers/numpy/pillow.
+check "the build records an image constraints file" "0" \
+  "$(grep -qF 'image-constraints.txt' Dockerfile; echo $?)"
 
 # Each bundled workflow needs a README table row so §8.2's checklist holds.
 check "MiniMax-H3 appears in the README workflow table" "0" \
