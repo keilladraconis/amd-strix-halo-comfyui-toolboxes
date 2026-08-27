@@ -63,9 +63,6 @@ RUN git clone --depth=1 https://github.com/kyuz0/ComfyUI-AMDGPUMonitor && \
     chmod -R a+rwX ComfyUI-AMDGPUMonitor
 RUN git clone --depth=1 https://github.com/city96/ComfyUI-GGUF && \
     chmod -R a+rwX ComfyUI-GGUF
-# MiniMax-H3 Turbo nodes: MiniMaxH3TurboLoRA, MiniMaxH3TurboSampler
-RUN git clone --depth=1 https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo && \
-    chmod -R a+rwX ComfyUI-MiniMax-H3-Turbo
 # LTX-2.3 nodes: GemmaAPITextEncode, LTXVImgToVideoConditionOnly
 RUN git clone --depth=1 https://github.com/Lightricks/ComfyUI-LTXVideo && \
     chmod -R a+rwX ComfyUI-LTXVideo && \
@@ -73,6 +70,9 @@ RUN git clone --depth=1 https://github.com/Lightricks/ComfyUI-LTXVideo && \
 # LTX-2.3 nodes: CM_FloatToInt
 RUN git clone --depth=1 https://github.com/evanspearman/ComfyMath && \
     chmod -R a+rwX ComfyMath
+# MiniMax-H3 Turbo nodes: MiniMaxH3TurboLoRA, MiniMaxH3TurboSampler
+RUN git clone --depth=1 https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo && \
+    chmod -R a+rwX ComfyUI-MiniMax-H3-Turbo
 
 # ── 8. Stable Diffusion WebUI Forge ───────────────────────────────────────────
 RUN git clone --depth=1 https://github.com/lllyasviel/stable-diffusion-webui-forge /opt/stable-diffusion-webui-forge && \

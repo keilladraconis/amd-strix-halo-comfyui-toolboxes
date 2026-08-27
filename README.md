@@ -56,6 +56,11 @@ The repository comes with a collection of ComfyUI workflows pre-validated on thi
 | **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 (FP8) & Lightning LoRA (4/20 steps). |
 | **Wan 2.2** | I2V / T2V | 14B model with 4-step Lightning LoRA. |
 
+> [!NOTE]
+> The two **MiniMax-H3** entries are newly ported from upstream and have not
+> yet been validated on this hardware. They also ship in UI format only, so
+> they have no benchmark coverage — see [§8.2](#82-adding-or-updating-workflows).
+
 ---
 
 ## 2. Toolbox Setup
