@@ -39,13 +39,17 @@ resolve_channel() {
 }
 
 # Parse args
-VALID_ARGS=$(getopt -o lc: --long local,channel: -- "$@")
+VALID_ARGS=$(getopt -o lc: --long local,channel:,refresh-sources -- "$@")
 
 eval set -- "$VALID_ARGS"
 while [ : ]; do
     case "$1" in
         -l | --local)
             LOCAL=1
+            shift
+            ;;
+        --refresh-sources)
+            REFRESH_SOURCES=1
             shift
             ;;
         -c | --channel)
@@ -80,6 +84,16 @@ if [[ "$LOCAL" == "1" ]]; then
     done < "$OVERRIDES_FILE"
   fi
 
+  # The Dockerfile's `git clone --depth=1` layers are cached on a command string
+  # that never changes, so ComfyUI, the custom nodes, the studios and Forge stay
+  # frozen at whatever was first cloned. Bumping SOURCES_EPOCH busts the refresh
+  # barrier and re-clones them all. Everything below the barrier rebuilds too;
+  # the ROCm/PyTorch install sits above it and is preserved.
+  if [[ "${REFRESH_SOURCES:-0}" == "1" ]]; then
+    echo "Refreshing sources: re-cloning ComfyUI, custom nodes, studios and Forge."
+    BUILD_ARGS+=(--build-arg "SOURCES_EPOCH=$(date +%s)")
+  fi
+
   echo "Building local image from $SCRIPT_DIR/Dockerfile ..."
   podman build "${BUILD_ARGS[@]}" -t "$IMAGE" "$SCRIPT_DIR"
 
@@ -94,6 +108,11 @@ fi
 if [[ -f "$OVERRIDES_FILE" ]]; then
   echo "Note: $OVERRIDES_FILE exists but only applies to --local builds;" >&2
   echo "      this pull path uses the prebuilt image as-is." >&2
+fi
+
+if [[ "${REFRESH_SOURCES:-0}" == "1" ]]; then
+  echo "Note: --refresh-sources only applies to --local builds; published images" >&2
+  echo "      are built with no-cache, so their sources are already current." >&2
 fi
 
 TOOLBOX_NAME="amd-strix-halo-comfyui"

@@ -37,6 +37,24 @@ RUN python -m pip install \
 WORKDIR /opt
 RUN python -m pip install gguf transformers==4.56.2
 
+# ── Source refresh barrier ────────────────────────────────────────────────────
+# Every `git clone --depth=1` below is cached on its command string, which never
+# changes — so podman keeps whatever ComfyUI, node packs, studios and Forge it
+# first cloned, indefinitely. Bumping this arg invalidates this layer and, since
+# layer caching is sequential, every clone after it.
+#
+#   ./refresh-toolbox.sh --local --refresh-sources
+#
+# Deliberately placed after the ROCm/PyTorch install (§3): refreshing sources
+# re-runs the clones and their pip installs, but never the ~10GB torch step.
+# Any clone added ABOVE this line silently stops being refreshable.
+#
+# The recorded date is when the clones actually last ran (it freezes with the
+# cache), not when this build ran — that is what the banner reports.
+ARG SOURCES_EPOCH=0
+RUN printf 'refreshed=%s\nrequested_epoch=%s\n' \
+      "$(date -u +%Y-%m-%d)" "$SOURCES_EPOCH" > /etc/toolbox-sources
+
 # ── 5. External studios ───────────────────────────────────────────────────────
 WORKDIR /opt
 RUN git clone --depth=1 https://github.com/kyuz0/qwen-image-studio /opt/qwen-image-studio && \

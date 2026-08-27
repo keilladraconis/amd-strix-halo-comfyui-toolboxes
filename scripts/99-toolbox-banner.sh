@@ -57,9 +57,27 @@ except Exception:
 PY
 }
 
+# Date the bundled sources (ComfyUI, custom nodes, studios, Forge) were last
+# cloned. Written by the Dockerfile's refresh barrier and frozen with the layer
+# cache, so it reports the real age of the clones, not of the build.
+sources_line() {
+  local refreshed age
+  [[ -r /etc/toolbox-sources ]] || return
+  refreshed=$(sed -n 's/^refreshed=//p' /etc/toolbox-sources)
+  [[ -n "$refreshed" ]] || return
+  age=$(( ( $(date -u +%s) - $(date -u -d "$refreshed" +%s 2>/dev/null || echo 0) ) / 86400 ))
+  if (( age >= 14 )); then
+    printf 'Sources: %s (%sd old — refresh: ./refresh-toolbox.sh --local --refresh-sources)\n' \
+      "$refreshed" "$age"
+  else
+    printf 'Sources: %s\n' "$refreshed"
+  fi
+}
+
 MACHINE="$(oem_info)"
 GPU="$(gpu_name)"
 ROCM_VER="$(rocm_version)"
+SOURCES="$(sources_line)"
 
 echo
 cat <<'ASCII'
@@ -76,6 +94,7 @@ ASCII
 echo
 printf 'AMD Ryzen AI Max “Strix Halo” — Image & Video Toolbox (gfx1151, ROCm via TheRock)\n'
 [[ -n "$ROCM_VER" ]] && printf 'ROCm nightly: %s\n' "$ROCM_VER"
+[[ -n "$SOURCES" ]] && printf '%s\n' "$SOURCES"
 echo
 printf 'Machine: %s\n' "$MACHINE"
 printf 'GPU    : %s\n\n' "$GPU"

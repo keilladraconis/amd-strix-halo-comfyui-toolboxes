@@ -258,6 +258,27 @@ toolbox enter amd-strix-halo-comfyui
 > [!WARNING]
 > Like a normal refresh, `--local` will **delete and recreate** the toolbox container. Files inside the container (e.g., `/opt`, `/usr`) will be reset. Your home directory is safe.
 
+#### Refreshing the bundled sources
+
+ComfyUI, the custom node packs, both studios and Forge are `git clone --depth=1`d during the build. Podman caches those layers on a command string that never changes, so a local build keeps whatever it first cloned — indefinitely. A months-old ComfyUI shows up as missing-node errors when you load a workflow that needs a recent one.
+
+To re-clone them all:
+
+```bash
+./refresh-toolbox.sh --local --refresh-sources
+```
+
+This rebuilds every layer below the refresh barrier — the clones and the pip installs that follow them — but not the ROCm/PyTorch install above it, so it is much cheaper than `--no-cache`. The banner reports how old the bundled sources are and reminds you once they pass two weeks:
+
+```
+Sources: 2026-06-15 (73d old — refresh: ./refresh-toolbox.sh --local --refresh-sources)
+```
+
+The flag only affects `--local` builds; published images are built with `no-cache: true` in CI, so their sources are always current.
+
+> [!NOTE]
+> When adding a new `git clone` to the `Dockerfile`, put it **below** the source refresh barrier — anything above it is exempt from `--refresh-sources` and will silently go stale. `tests/test-dockerfile-wiring.sh` checks this.
+
 ### 8.2. Adding or Updating Workflows
 
 Workflows are stored in two formats, both required:

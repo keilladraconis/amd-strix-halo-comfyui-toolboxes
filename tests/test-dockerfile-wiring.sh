@@ -32,6 +32,23 @@ check "the MiniMax-H3 Turbo clone is chmod'ed like its neighbours" "0" \
 check "workflows/*.json are copied into /opt/comfy-workflows" "0" \
   "$(grep -qF 'COPY workflows/*.json /opt/comfy-workflows/' Dockerfile; echo $?)"
 
+# The source refresh barrier only refreshes clones BELOW it, and layer caching
+# is sequential — a clone added above it silently stops being refreshable.
+barrier=$(grep -n '^ARG SOURCES_EPOCH' Dockerfile | head -1 | cut -d: -f1)
+first_clone=$(grep -nE '^RUN .*git clone' Dockerfile | head -1 | cut -d: -f1)
+check "the source refresh barrier precedes every git clone" "yes" \
+  "$([[ -n "$barrier" && -n "$first_clone" && "$barrier" -lt "$first_clone" ]] && echo yes || echo no)"
+
+# An ARG only busts the cache if something actually references it.
+check "the refresh barrier references SOURCES_EPOCH so it busts the cache" "0" \
+  "$(grep -qF '$SOURCES_EPOCH' Dockerfile; echo $?)"
+
+# The flag is useless unless refresh-toolbox.sh plumbs it into the build.
+check "refresh-toolbox.sh passes SOURCES_EPOCH as a build arg" "0" \
+  "$(grep -qF 'SOURCES_EPOCH=$(date +%s)' refresh-toolbox.sh; echo $?)"
+check "refresh-toolbox.sh accepts --refresh-sources in getopt" "0" \
+  "$(grep -qE 'getopt .*--long .*refresh-sources' refresh-toolbox.sh; echo $?)"
+
 # Forge's requirements_versions.txt carries pins that break on Python 3.13 and
 # current rawhide. Each one we filter out is either already installed by an
 # earlier step or must be reinstalled here — filtering without reinstalling
