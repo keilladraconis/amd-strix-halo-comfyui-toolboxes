@@ -50,6 +50,8 @@ The repository comes with a collection of ComfyUI workflows pre-validated on thi
 | **LTX Video 2** | I2V / T2V | BF16, standard single-stage generation. |
 | **LTX Video 2.3 — Single Stage** | I2V / T2V | BF16, single-stage distilled full pipeline. |
 | **LTX Video 2.3 — Two Stage** | I2V / T2V | BF16, two-stage distilled pipeline for higher quality. |
+| **MiniMax-H3** | T2V / I2V / R2V | Int8 diffusion model + NVFP4 text encoder; native stereo audio. |
+| **MiniMax-H3 Turbo** | T2V / I2V | Turbo LoRA, 4–8 sampling steps. |
 | **Qwen Image** | T2I | Qwen Image 2512 (FP8) & Lightning LoRA (4 steps). |
 | **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 (FP8) & Lightning LoRA (4/20 steps). |
 | **Wan 2.2** | I2V / T2V | 14B model with 4-step Lightning LoRA. |
@@ -261,6 +263,11 @@ Workflows are stored in two formats, both required:
 | `workflows/API/` | **API format** | Minimal JSON used by the benchmark and log-collection scripts. |
 
 Both files should share the same base filename (e.g., `My-Workflow.json`).
+
+> [!NOTE]
+> The five `MiniMax-H3-*.json` workflows currently ship in UI format only.
+> Their API-format exports are pending hardware validation, so MiniMax-H3
+> has no benchmark or perf-log coverage yet.
 
 #### Exporting from the ComfyUI UI
 

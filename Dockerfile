@@ -63,6 +63,9 @@ RUN git clone --depth=1 https://github.com/kyuz0/ComfyUI-AMDGPUMonitor && \
     chmod -R a+rwX ComfyUI-AMDGPUMonitor
 RUN git clone --depth=1 https://github.com/city96/ComfyUI-GGUF && \
     chmod -R a+rwX ComfyUI-GGUF
+# MiniMax-H3 Turbo nodes: MiniMaxH3TurboLoRA, MiniMaxH3TurboSampler
+RUN git clone --depth=1 https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo && \
+    chmod -R a+rwX ComfyUI-MiniMax-H3-Turbo
 # LTX-2.3 nodes: GemmaAPITextEncode, LTXVImgToVideoConditionOnly
 RUN git clone --depth=1 https://github.com/Lightricks/ComfyUI-LTXVideo && \
     chmod -R a+rwX ComfyUI-LTXVideo && \
@@ -124,6 +127,7 @@ COPY --chmod=755 scripts/get_wan22.sh /opt/
 COPY --chmod=755 scripts/get_qwen_image.sh /opt/
 COPY --chmod=755 scripts/get_hunyuan15.sh /opt/
 COPY --chmod=755 scripts/get_ltx2.sh /opt/
+COPY --chmod=755 scripts/get_minimax_h3.sh /opt/
 COPY --chmod=755 scripts/start_forge.sh /opt/
 COPY scripts/benchmark_workflows.py /opt/
 COPY scripts/collect_perf_logs.py /opt/
