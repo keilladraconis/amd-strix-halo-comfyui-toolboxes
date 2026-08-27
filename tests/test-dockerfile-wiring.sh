@@ -32,6 +32,21 @@ check "the MiniMax-H3 Turbo clone is chmod'ed like its neighbours" "0" \
 check "workflows/*.json are copied into /opt/comfy-workflows" "0" \
   "$(grep -qF 'COPY workflows/*.json /opt/comfy-workflows/' Dockerfile; echo $?)"
 
+# Forge's requirements_versions.txt carries pins that break on Python 3.13 and
+# current rawhide. Each one we filter out is either already installed by an
+# earlier step or must be reinstalled here — filtering without reinstalling
+# silently removes a package Forge imports at runtime.
+forge_filter=$(grep -oP "grep -ivE '\^\(\K[^)]+" Dockerfile)
+for pkg in numpy scikit-image; do
+  check "Forge deps filter excludes the incompatible $pkg pin" "0" \
+    "$(grep -qE "(^|\|)${pkg}(\||$)" <<<"$forge_filter"; echo $?)"
+done
+
+# Forge imports skimage (modules/processing.py and 4 others), so filtering the
+# pin obliges us to put a working scikit-image back.
+check "a replacement scikit-image is installed after filtering its pin" "0" \
+  "$(grep -qE 'pip install .*scikit-image==' Dockerfile; echo $?)"
+
 # Each bundled workflow needs a README table row so §8.2's checklist holds.
 check "MiniMax-H3 appears in the README workflow table" "0" \
   "$(grep -qF '| **MiniMax-H3** |' README.md; echo $?)"

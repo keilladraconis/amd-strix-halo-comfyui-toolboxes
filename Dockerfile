@@ -85,11 +85,22 @@ WORKDIR /opt/stable-diffusion-webui-forge
 #    since its only runtime needs are Pillow + numpy + aenum, all already present
 #  - Filter out huggingface-hub (pins ==0.26.2, which predates the `hf` CLI the
 #    get_*.sh model scripts need; already installed >=0.34 from ComfyUI step)
-RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes|huggingface-hub)\b' requirements_versions.txt \
+#  - Filter out numpy (pins ==1.26.2, which has no cp313 wheel and silently
+#    downgraded the numpy 2.x that torch and ComfyUI are built against, for the
+#    whole shared venv)
+#  - Filter out scikit-image (pins ==0.21.0, no cp313 wheel). Building it from
+#    source fails on current rawhide: its meson build compiles pythran-generated
+#    C++ with -std=c++14, and GCC 16's libstdc++ no longer exposes the C++17
+#    std::is_integral_v that pythran's headers use. Reinstalled from a wheel
+#    below — Forge imports skimage in modules/processing.py and 4 other files.
+#    Pinned: unpinned resolves to 0.26.0, which drags numpy to 2.5.2 and breaks
+#    numba (requires numpy<2.5).
+RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes|huggingface-hub|numpy|scikit-image)\b' requirements_versions.txt \
       > /tmp/forge-reqs.txt && \
     python -m pip install --prefer-binary -r /tmp/forge-reqs.txt && \
     python -m pip install --no-deps blendmodes==2022 && \
     python -m pip install --prefer-binary gradio-rangeslider && \
+    python -m pip install --prefer-binary "scikit-image==0.25.2" && \
     rm /tmp/forge-reqs.txt
 
 # Make the venv writable by the running (non-root) toolbox user, like every
