@@ -83,6 +83,42 @@ check(
     },
 )
 
+# The LTX families all key off "LTX", so each newer generation must be excluded
+# from the LTX-2 family or its workflows activate LTX-2 as well. Every new LTX
+# generation has to be added to that exclude list; these cases catch a miss.
+check(
+    "LTX-2.5 workflows activate only the LTX-2.5 family",
+    ["LTX-2.5 (22B) - Video Generation"],
+    families_for(
+        [
+            "LTX2.5-T2V-I2V-Single-Stage-Distilled.json",
+            "LTX2.5-T2V-I2V-Two-Stage-Distilled.json",
+        ]
+    ),
+)
+
+check(
+    "LTX-2.3 workflows activate only the LTX-2.3 family",
+    ["LTX-2.3 (22B) - Video Generation"],
+    families_for(["LTX2.3-T2V-Distilled.json", "LTX2.3-I2V-Distilled.json"]),
+)
+
+check(
+    "LTX-2 workflows activate only the LTX-2 family",
+    ["LTX-2 (19B) - Video Generation"],
+    families_for(["LTX2-T2V-BF16.json", "LTX2-I2V-BF16.json"]),
+)
+
+check(
+    "the LTX-2.5 family downloads via get_ltx25.sh",
+    {"get_ltx25.sh"},
+    {
+        family["script"]
+        for family in model_manager.MODEL_FAMILIES
+        if family["name"].startswith("LTX-2.5")
+    },
+)
+
 # Ties the family data to the files actually committed in workflows/: a typo
 # in either one shows up here rather than at runtime in the container.
 bundled = [path.name for path in (ROOT / "workflows").glob("*.json")]

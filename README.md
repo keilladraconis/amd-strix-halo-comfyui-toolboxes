@@ -50,6 +50,8 @@ The repository comes with a collection of ComfyUI workflows pre-validated on thi
 | **LTX Video 2** | I2V / T2V | BF16, standard single-stage generation. |
 | **LTX Video 2.3 — Single Stage** | I2V / T2V | BF16, single-stage distilled full pipeline. |
 | **LTX Video 2.3 — Two Stage** | I2V / T2V | BF16, two-stage distilled pipeline for higher quality. |
+| **LTX Video 2.5 — Single Stage** | T2V / I2V | 22B distilled (int8-convrot), Gemma-4 text encoder, native audio. |
+| **LTX Video 2.5 — Two Stage** | T2V / I2V | As above plus a latent spatial upscaler for higher quality. |
 | **MiniMax-H3** | T2V / I2V / R2V | Int8 diffusion model + NVFP4 text encoder; native stereo audio. |
 | **MiniMax-H3 Turbo** | T2V / I2V | Turbo LoRA, 4–8 sampling steps. |
 | **Qwen Image** | T2I | Qwen Image 2512 (FP8) & Lightning LoRA (4 steps). |
@@ -57,9 +59,20 @@ The repository comes with a collection of ComfyUI workflows pre-validated on thi
 | **Wan 2.2** | I2V / T2V | 14B model with 4-step Lightning LoRA. |
 
 > [!NOTE]
-> The two **MiniMax-H3** entries are newly ported from upstream and have not
-> yet been validated on this hardware. They also ship in UI format only, so
-> they have no benchmark coverage — see [§8.2](#82-adding-or-updating-workflows).
+> The two **MiniMax-H3** and two **LTX Video 2.5** entries are newly added and
+> have not yet been validated on this hardware. They also ship in UI format
+> only, so they have no benchmark coverage — see
+> [§8.2](#82-adding-or-updating-workflows).
+
+> [!IMPORTANT]
+> **LTX Video 2.5 needs a Hugging Face login.** `Lightricks/LTX-2.5` is a gated
+> repository — every other model here downloads anonymously. Before using the
+> Model Manager for it: open
+> [the model page](https://huggingface.co/Lightricks/LTX-2.5), click **Agree and
+> access repository**, then run `hf auth login` inside the toolbox with a token
+> from [your HF settings](https://huggingface.co/settings/tokens). The
+> downloader checks for this and explains it rather than failing with a bare
+> HTTP 401.
 
 ---
 

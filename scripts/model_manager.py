@@ -144,7 +144,9 @@ MODEL_FAMILIES = [
     {
         "name": "LTX-2 (19B) - Video Generation",
         "keywords": ["LTX"],
-        "exclude_keywords": ["2.3"],
+        # "LTX" alone matches every LTX generation, so each newer one must be
+        # excluded here or its workflows also activate this family.
+        "exclude_keywords": ["2.3", "2.5"],
         "script": "get_ltx2.sh",
         "variants": [
             {
@@ -169,6 +171,23 @@ MODEL_FAMILIES = [
             {
                 "name": "Dev / BF16 (Full Quality + FP4 Text Enc)",
                 "args": ["common-23", "checkpoint-23", "lora-23"]
+            },
+        ]
+    },
+    {
+        # Lightricks/LTX-2.5 is gated: get_ltx25.sh checks for an HF login and
+        # explains how to get one before it tries to download.
+        "name": "LTX-2.5 (22B) - Video Generation",
+        "keywords": ["LTX", "2.5"],
+        "script": "get_ltx25.sh",
+        "variants": [
+            {
+                "name": "Single Stage (Distilled int8, ~45GB)",
+                "args": ["common", "enhancer", "distilled"]
+            },
+            {
+                "name": "Two Stage (Distilled int8 + upscaler, ~46GB)",
+                "args": ["common", "enhancer", "distilled", "upscaler"]
             },
         ]
     },
