@@ -172,6 +172,65 @@ MODEL_FAMILIES = [
             },
         ]
     },
+
+    # --- MiniMax-H3 ---
+    {
+        "name": "MiniMax-H3 T2V",
+        "keywords": ["minimax-h3", "t2v"],
+        "exclude_keywords": ["turbo"],
+        "script": "get_minimax_h3.sh",
+        "variants": [
+            {
+                "name": "T2V model + shared encoder and VAEs",
+                "args": ["common", "fl2va"]
+            }
+        ]
+    },
+    {
+        "name": "MiniMax-H3 I2V",
+        "keywords": ["minimax-h3", "i2v"],
+        "exclude_keywords": ["turbo"],
+        "script": "get_minimax_h3.sh",
+        "variants": [
+            {
+                "name": "I2V model + shared encoder and VAEs",
+                "args": ["common", "fl2va"]
+            }
+        ]
+    },
+    {
+        "name": "MiniMax-H3 R2V",
+        "keywords": ["minimax-h3", "r2v"],
+        "script": "get_minimax_h3.sh",
+        "variants": [
+            {
+                "name": "R2V model + shared encoder and VAEs",
+                "args": ["common", "ref2va"]
+            }
+        ]
+    },
+    {
+        "name": "MiniMax-H3 Turbo T2V",
+        "keywords": ["minimax-h3", "turbo", "t2v"],
+        "script": "get_minimax_h3.sh",
+        "variants": [
+            {
+                "name": "Turbo LoRA + T2V model, encoder and VAEs",
+                "args": ["common", "fl2va", "turbo"]
+            }
+        ]
+    },
+    {
+        "name": "MiniMax-H3 Turbo I2V",
+        "keywords": ["minimax-h3", "turbo", "i2v"],
+        "script": "get_minimax_h3.sh",
+        "variants": [
+            {
+                "name": "Turbo LoRA + I2V model, encoder and VAEs",
+                "args": ["common", "fl2va", "turbo"]
+            }
+        ]
+    },
 ]
 
 def check_dependencies():
