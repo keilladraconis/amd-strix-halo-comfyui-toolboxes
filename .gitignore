@@ -2,3 +2,4 @@ __pycache__
 perf_logs/
 docs/superpowers/
 nightly-overrides.conf
+.superpowers/
