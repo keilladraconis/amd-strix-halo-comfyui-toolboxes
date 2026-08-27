@@ -74,23 +74,12 @@ RUN python -m pip install -r requirements.txt && \
     pillow opencv-python-headless imageio imageio-ffmpeg scipy "huggingface_hub[hf_transfer]>=0.34,<1.0" pyyaml websocket-client
 
 # ── 7. ComfyUI custom nodes ───────────────────────────────────────────────────
-WORKDIR /opt/ComfyUI/custom_nodes
-RUN git clone --depth=1 https://github.com/cubiq/ComfyUI_essentials && \
-    chmod -R a+rwX ComfyUI_essentials
-RUN git clone --depth=1 https://github.com/kyuz0/ComfyUI-AMDGPUMonitor && \
-    chmod -R a+rwX ComfyUI-AMDGPUMonitor
-RUN git clone --depth=1 https://github.com/city96/ComfyUI-GGUF && \
-    chmod -R a+rwX ComfyUI-GGUF
-# LTX-2.3 nodes: GemmaAPITextEncode, LTXVImgToVideoConditionOnly
-RUN git clone --depth=1 https://github.com/Lightricks/ComfyUI-LTXVideo && \
-    chmod -R a+rwX ComfyUI-LTXVideo && \
-    python -m pip install --prefer-binary einops ninja timm
-# LTX-2.3 nodes: CM_FloatToInt
-RUN git clone --depth=1 https://github.com/evanspearman/ComfyMath && \
-    chmod -R a+rwX ComfyMath
-# MiniMax-H3 Turbo nodes: MiniMaxH3TurboLoRA, MiniMaxH3TurboSampler
-RUN git clone --depth=1 https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo && \
-    chmod -R a+rwX ComfyUI-MiniMax-H3-Turbo
+# Not installed at build time. ComfyUI runs with `--base-directory $HOME/comfy-ui`
+# and folder_paths.py resolves custom_nodes against that base, so anything under
+# /opt/ComfyUI/custom_nodes is never scanned. scripts/install_custom_nodes.sh
+# clones the packs into the user's base directory instead — run automatically by
+# start_comfy_ui — and installs each pack's own requirements.txt into the venv,
+# which is why the venv is made world-writable below.
 
 # ── 8. Stable Diffusion WebUI Forge ───────────────────────────────────────────
 RUN git clone --depth=1 https://github.com/lllyasviel/stable-diffusion-webui-forge /opt/stable-diffusion-webui-forge && \
@@ -106,6 +95,12 @@ WORKDIR /opt/stable-diffusion-webui-forge
 #  - Filter out numpy (pins ==1.26.2, which has no cp313 wheel and silently
 #    downgraded the numpy 2.x that torch and ComfyUI are built against, for the
 #    whole shared venv)
+#  - Filter out transformers (pins ==4.46.1, downgrading the ==4.56.2 installed
+#    in §4 for the whole venv). NOTE: this does not fully restore 4.56.2 --
+#    Forge's peft==0.13.2 / tokenizers stack still drags the resolver down to
+#    4.49.0. Filtering only removes the explicit downgrade. ComfyUI-LTXVideo
+#    needs >=4.50 and so still fails to import; see the shared-venv conflict
+#    between Forge's 2024-era pins and current ComfyUI node packs.
 #  - Filter out scikit-image (pins ==0.21.0, no cp313 wheel). Building it from
 #    source fails on current rawhide: its meson build compiles pythran-generated
 #    C++ with -std=c++14, and GCC 16's libstdc++ no longer exposes the C++17
@@ -113,7 +108,7 @@ WORKDIR /opt/stable-diffusion-webui-forge
 #    below — Forge imports skimage in modules/processing.py and 4 other files.
 #    Pinned: unpinned resolves to 0.26.0, which drags numpy to 2.5.2 and breaks
 #    numba (requires numpy<2.5).
-RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes|huggingface-hub|numpy|scikit-image)\b' requirements_versions.txt \
+RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes|huggingface-hub|numpy|scikit-image|transformers)\b' requirements_versions.txt \
       > /tmp/forge-reqs.txt && \
     python -m pip install --prefer-binary -r /tmp/forge-reqs.txt && \
     python -m pip install --no-deps blendmodes==2022 && \
@@ -128,6 +123,27 @@ RUN grep -ivE '^(pillow|torch|torchvision|torchaudio|blendmodes|huggingface-hub|
 # site because it will lack sys.path precedence ..."). Toolbox containers are
 # per-user, so a world-writable venv is not a multi-tenant concern.
 RUN chmod -R a+rwX /opt/venv
+
+# Constraints for runtime custom-node dependency installs. Node packs list
+# their own requirements, and pip will happily satisfy them by replacing what
+# the image carefully pinned — observed: transformers 4.56.2 -> 5.16.1 and
+# pillow -> 12.3.0 (which breaks Forge's gradio). The worst case is a pack
+# listing `torch`, which would swap the ROCm nightly for a generic PyPI wheel
+# and take GPU support with it.
+#
+# Recorded from what is actually installed, so it tracks the nightly in use.
+# Only load-bearing packages are listed: a pack needing anything else resolves
+# freely, and one that genuinely needs a newer pin now fails loudly at install
+# time instead of silently breaking ComfyUI.
+RUN /opt/venv/bin/python - <<'PY' > /opt/venv/image-constraints.txt
+import importlib.metadata as md
+for pkg in ("torch", "torchvision", "torchaudio", "numpy",
+            "transformers", "pillow", "gradio"):
+    try:
+        print(f"{pkg}=={md.version(pkg)}")
+    except md.PackageNotFoundError:
+        pass
+PY
 
 # ── 9. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
@@ -152,6 +168,7 @@ COPY workflows/API /opt/comfy-workflows/API
 
 # ── 12. Helper scripts & model manager (change most often) ────────────────────
 COPY --chmod=755 scripts/install_workflows.sh /opt/
+COPY --chmod=755 scripts/install_custom_nodes.sh /opt/
 COPY --chmod=755 scripts/get_wan22.sh /opt/
 COPY --chmod=755 scripts/get_qwen_image.sh /opt/
 COPY --chmod=755 scripts/get_hunyuan15.sh /opt/

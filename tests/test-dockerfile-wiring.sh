@@ -20,13 +20,24 @@ for f in scripts/get_*.sh; do
 done
 check "every scripts/get_*.sh is copied into the image" "" "${missing[*]-}"
 
-# The Turbo workflows are unusable without their custom node.
-check "the MiniMax-H3 Turbo custom node is cloned" "0" \
-  "$(grep -qF 'github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo' Dockerfile; echo $?)"
+# The Turbo workflows are unusable without their custom node. Packs are no
+# longer baked into the image -- they are cloned into the ComfyUI base directory
+# at runtime, because --base-directory means /opt/ComfyUI/custom_nodes is never
+# scanned. The manifest is the single source of truth.
+check "the MiniMax-H3 Turbo custom node is in the installer manifest" "0" \
+  "$(grep -qF 'github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo' scripts/install_custom_nodes.sh; echo $?)"
 
-# Custom nodes must be world-writable: the venv installs node deps at runtime.
-check "the MiniMax-H3 Turbo clone is chmod'ed like its neighbours" "0" \
-  "$(grep -qF 'chmod -R a+rwX ComfyUI-MiniMax-H3-Turbo' Dockerfile; echo $?)"
+# Baking packs into the image is what broke them: ComfyUI would not scan there.
+check "no custom node packs are cloned into the image" "" \
+  "$(grep -nE '^RUN git clone.*ComfyUI[-_]' Dockerfile)"
+
+# The installer is useless unless it reaches the image.
+check "the custom node installer is copied into the image" "0" \
+  "$(grep -qF 'COPY --chmod=755 scripts/install_custom_nodes.sh /opt/' Dockerfile; echo $?)"
+
+# A fresh toolbox must not be able to start ComfyUI with an empty custom_nodes.
+check "start_comfy_ui installs custom nodes before launching" "0" \
+  "$(grep -qE "alias start_comfy_ui=.*install_custom_nodes\.sh" scripts/99-toolbox-banner.sh; echo $?)"
 
 # Every workflow the model manager can offer must reach the image.
 check "workflows/*.json are copied into /opt/comfy-workflows" "0" \
@@ -54,7 +65,7 @@ check "refresh-toolbox.sh accepts --refresh-sources in getopt" "0" \
 # earlier step or must be reinstalled here — filtering without reinstalling
 # silently removes a package Forge imports at runtime.
 forge_filter=$(grep -oP "grep -ivE '\^\(\K[^)]+" Dockerfile)
-for pkg in numpy scikit-image; do
+for pkg in numpy scikit-image transformers; do
   check "Forge deps filter excludes the incompatible $pkg pin" "0" \
     "$(grep -qE "(^|\|)${pkg}(\||$)" <<<"$forge_filter"; echo $?)"
 done

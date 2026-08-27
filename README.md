@@ -124,6 +124,23 @@ install_workflows
 
 This copies the UI-format workflow JSONs from `/opt/comfy-workflows/` to `~/comfy-ui/user/default/workflows/`. Re-run after any toolbox refresh to pick up new workflows.
 
+### Custom nodes
+
+Custom node packs are **not** baked into the image. ComfyUI runs with `--base-directory ~/comfy-ui`, and it resolves `custom_nodes` against that base — so packs installed under `/opt/ComfyUI/custom_nodes` would never be scanned. They are cloned into `~/comfy-ui/custom_nodes/` instead, where they also survive a toolbox rebuild.
+
+`start_comfy_ui` does this for you; the first launch clones the packs and installs each one's `requirements.txt` into the venv, and later launches skip the work. To manage them by hand:
+
+```bash
+install_custom_nodes          # clone anything missing, ensure dependencies
+update_custom_nodes           # also fast-forward existing clones
+/opt/install_custom_nodes.sh list   # show packs and their state
+```
+
+The venv is reset whenever the toolbox is recreated, so dependencies are reinstalled on the next launch even though the clones in your home directory persist. Adding a pack means adding its URL to `REPOS` in `scripts/install_custom_nodes.sh`. A directory you create yourself under `~/comfy-ui/custom_nodes/` is never touched.
+
+> [!NOTE]
+> The first launch needs network access. If a clone fails, `start_comfy_ui` reports it and starts ComfyUI anyway — with those nodes missing.
+
 ### Step 2: Download Models
 
 Use the **Model Manager TUI** to download the required checkpoints and LoRAs for the included workflows. This tool handles the complex dependency chains (e.g., downloading base models before LoRAs).
@@ -260,7 +277,7 @@ toolbox enter amd-strix-halo-comfyui
 
 #### Refreshing the bundled sources
 
-ComfyUI, the custom node packs, both studios and Forge are `git clone --depth=1`d during the build. Podman caches those layers on a command string that never changes, so a local build keeps whatever it first cloned — indefinitely. A months-old ComfyUI shows up as missing-node errors when you load a workflow that needs a recent one.
+ComfyUI, both studios and Forge are `git clone --depth=1`d during the build. Podman caches those layers on a command string that never changes, so a local build keeps whatever it first cloned — indefinitely. A months-old ComfyUI shows up as missing-node errors when you load a workflow that needs a recent one. (Custom node packs are exempt: they are cloned at runtime by `install_custom_nodes`, so `update_custom_nodes` refreshes those instead.)
 
 To re-clone them all:
 

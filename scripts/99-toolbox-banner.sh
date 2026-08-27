@@ -104,13 +104,20 @@ printf 'Included:\n'
 printf '  - %-16s → %s\n' "ComfyUI"            "start_comfy_ui (http://localhost:8000)"
 printf '  - %-16s → %s\n' "SD Forge"           "start_forge    (http://localhost:7860)"
 printf '  - %-16s → %s\n' "Install Workflows"  "install_workflows  (copy bundled workflows to ~/comfy-ui)"
+printf '  - %-16s → %s\n' "Custom Nodes"       "install_custom_nodes / update_custom_nodes"
 printf '  - %-16s → %s\n' "Model Manager"  "model_manager (select and install models for workflows)"
 
 echo
 printf 'SSH tip: ssh -L 8000:localhost:8000 -L 7860:localhost:7860 user@host\n\n'
 
 # Aliases
-alias start_comfy_ui='mkdir -p $HOME/comfy-ui/custom_nodes && cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+# Custom node packs live in the ComfyUI base directory, not in the image — see
+# /opt/install_custom_nodes.sh. Installing before launch means a fresh toolbox
+# can never start with an empty custom_nodes directory. A failure there (no
+# network, say) is reported but must not stop ComfyUI from starting.
+alias start_comfy_ui='/opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+alias install_custom_nodes='/opt/install_custom_nodes.sh'
+alias update_custom_nodes='/opt/install_custom_nodes.sh update'
 alias start_forge='/opt/start_forge.sh'
 alias install_workflows='/opt/install_workflows.sh'
 alias model_manager='python /opt/model_manager.py'
