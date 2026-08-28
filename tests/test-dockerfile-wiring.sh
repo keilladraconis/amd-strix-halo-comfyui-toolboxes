@@ -35,9 +35,16 @@ check "no custom node packs are cloned into the image" "" \
 check "the custom node installer is copied into the image" "0" \
   "$(grep -qF 'COPY --chmod=755 scripts/install_custom_nodes.sh /opt/' Dockerfile; echo $?)"
 
-# A fresh toolbox must not be able to start ComfyUI with an empty custom_nodes.
+# A fresh toolbox must not be able to start ComfyUI with an empty custom_nodes
+# or workflows directory -- forgetting either is the failure this guards.
 check "start_comfy_ui installs custom nodes before launching" "0" \
   "$(grep -qE "alias start_comfy_ui=.*install_custom_nodes\.sh" scripts/99-toolbox-banner.sh; echo $?)"
+check "start_comfy_ui installs workflows before launching" "0" \
+  "$(grep -qE "alias start_comfy_ui=.*install_workflows\.sh" scripts/99-toolbox-banner.sh; echo $?)"
+# Without --if-needed it would overwrite edits saved to a bundled workflow on
+# every launch, since ComfyUI saves back to the same filename.
+check "start_comfy_ui installs workflows with --if-needed" "0" \
+  "$(grep -qE "alias start_comfy_ui=.*install_workflows\.sh --if-needed" scripts/99-toolbox-banner.sh; echo $?)"
 
 # Every workflow the model manager can offer must reach the image.
 check "workflows/*.json are copied into /opt/comfy-workflows" "0" \

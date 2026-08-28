@@ -110,11 +110,13 @@ echo
 printf 'SSH tip: ssh -L 8000:localhost:8000 user@host\n\n'
 
 # Aliases
-# Custom node packs live in the ComfyUI base directory, not in the image — see
-# /opt/install_custom_nodes.sh. Installing before launch means a fresh toolbox
-# can never start with an empty custom_nodes directory. A failure there (no
-# network, say) is reported but must not stop ComfyUI from starting.
-alias start_comfy_ui='/opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+# Custom node packs and bundled workflows both live in the ComfyUI base
+# directory, not in the image — see /opt/install_custom_nodes.sh and
+# /opt/install_workflows.sh. Installing both before launch means a fresh toolbox
+# can never start with an empty custom_nodes or workflows directory. Workflows
+# use --if-needed so saved edits are not overwritten on every launch. A failure
+# (no network, say) is reported but must not stop ComfyUI from starting.
+alias start_comfy_ui='/opt/install_workflows.sh --if-needed; /opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
 alias install_custom_nodes='/opt/install_custom_nodes.sh'
 alias update_custom_nodes='/opt/install_custom_nodes.sh update'
 alias install_workflows='/opt/install_workflows.sh'
