@@ -180,13 +180,14 @@ MODEL_FAMILIES = [
         "name": "LTX-2.5 (22B) - Video Generation",
         "keywords": ["LTX", "2.5"],
         "script": "get_ltx25.sh",
+        # One variant on purpose. Splitting this by stage tempted you to pick
+        # the single-stage set and then find the two-stage workflow missing its
+        # upscaler -- a 996MB saving against a ~45GB download, in exchange for a
+        # bundled workflow that cannot run. Every variant here must cover every
+        # LTX-2.5 workflow we ship.
         "variants": [
             {
-                "name": "Single Stage (Distilled int8, ~45GB)",
-                "args": ["common", "enhancer", "distilled"]
-            },
-            {
-                "name": "Two Stage (Distilled int8 + upscaler, ~46GB)",
+                "name": "Distilled (int8-convrot, covers both workflows, ~46GB)",
                 "args": ["common", "enhancer", "distilled", "upscaler"]
             },
         ]

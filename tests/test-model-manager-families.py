@@ -119,6 +119,30 @@ check(
     },
 )
 
+# We ship a two-stage LTX-2.5 workflow, and it cannot run without the spatial
+# upscaler. A variant that omits it leaves that workflow broken for anyone who
+# picks it -- so every variant must pull it.
+ltx25_variants = [
+    variant
+    for family in model_manager.MODEL_FAMILIES
+    if family["name"].startswith("LTX-2.5")
+    for variant in family["variants"]
+]
+check(
+    "every LTX-2.5 variant downloads the upscaler the two-stage workflow needs",
+    [],
+    [v["name"] for v in ltx25_variants if "upscaler" not in v["args"]],
+)
+check(
+    "every LTX-2.5 variant downloads the transformer and text encoders",
+    [],
+    [
+        v["name"]
+        for v in ltx25_variants
+        if not {"common", "enhancer", "distilled"} <= set(v["args"])
+    ],
+)
+
 # Ties the family data to the files actually committed in workflows/: a typo
 # in either one shows up here rather than at runtime in the container.
 bundled = [path.name for path in (ROOT / "workflows").glob("*.json")]
