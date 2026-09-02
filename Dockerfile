@@ -71,7 +71,7 @@ RUN git clone --depth=1 https://github.com/comfyanonymous/ComfyUI.git /opt/Comfy
 WORKDIR /opt/ComfyUI
 RUN python -m pip install -r requirements.txt && \
     python -m pip install --prefer-binary \
-    pillow opencv-python-headless imageio imageio-ffmpeg scipy "huggingface_hub[hf_transfer]>=0.34,<1.0" pyyaml websocket-client
+    pillow opencv-python-headless imageio imageio-ffmpeg scipy "huggingface_hub>=1.5,<2.0" pyyaml websocket-client
 
 # ── 7. ComfyUI custom nodes ───────────────────────────────────────────────────
 # Not installed at build time. ComfyUI runs with `--base-directory $HOME/comfy-ui`

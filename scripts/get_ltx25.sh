@@ -10,7 +10,7 @@
 # and log in with `hf auth login` before running; see check_gated_access below.
 set -uo pipefail
 
-export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
+export HF_XET_HIGH_PERFORMANCE="${HF_XET_HIGH_PERFORMANCE:-1}"  # Xet fast path
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # persistent HF cache
 HF="${HF:-/opt/venv/bin/hf}"                            # overridable for tests
 
@@ -60,7 +60,7 @@ download_if_missing () {
     return 0
   fi
 
-  echo "HF Transfer: ${HF_HUB_ENABLE_HF_TRANSFER}"
+  echo "Xet high-perf: ${HF_XET_HIGH_PERFORMANCE}"
   echo "↓ Downloading $(basename "$remote") → $dest_file"
   mkdir -p "$(dirname "$staged")"        # ensure stage path exists
   mkdir -p "$dest_dir"                   # ensure dest dir exists

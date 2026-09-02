@@ -2,7 +2,7 @@
 # /opt/get_ltx2.sh  (resume-friendly)
 set -euo pipefail
 
-HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-1}"
+export HF_XET_HIGH_PERFORMANCE="${HF_XET_HIGH_PERFORMANCE:-1}"  # Xet fast path
 HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # persistent HF cache
 HF="/opt/venv/bin/hf"
 
@@ -26,7 +26,7 @@ download_if_missing () {
     return
   fi
 
-  echo "HF Transfer: ${HF_HUB_ENABLE_HF_TRANSFER}"
+  echo "Xet high-perf: ${HF_XET_HIGH_PERFORMANCE}"
   echo "↓ Downloading $(basename "$remote") → $dest_file"
   mkdir -p "$(dirname "$staged")"        # ensure stage path exists
   mkdir -p "$dest_dir"                   # ensure dest dir exists

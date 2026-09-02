@@ -339,14 +339,17 @@ def ask_download_options():
         "--title", "Download Options",
         "--cancel-label", "Back",
         "--checklist", "Configure options (Space to toggle, Enter to confirm):", "12", "72", "2",
-        "hf_transfer", "Enable hf_transfer (faster downloads, may overwhelm network on Fedora)", "on",
-        "disable_xet",  "Disable XET protocol (workaround for connectivity issues)", "off"
+        "xet_fast",    "Xet high-performance transfer (faster, more bandwidth)", "on",
+        "disable_xet", "Disable Xet protocol (workaround for connectivity issues)", "off"
     ])
     if result is None:
         return None
     return {
-        "hf_transfer": "hf_transfer" in result,
-        "disable_xet":  "disable_xet"  in result,
+        # hf_transfer was the old fast path; huggingface_hub 1.x deprecated it
+        # ("'hf_transfer' is not used anymore") in favour of Xet, and points at
+        # HF_XET_HIGH_PERFORMANCE instead. Disabling Xet also disables this.
+        "xet_fast":    "xet_fast" in result,
+        "disable_xet": "disable_xet" in result,
     }
 
 def execute_download(script_name, args, options=None):
@@ -368,13 +371,13 @@ def execute_download(script_name, args, options=None):
     full_cmd = " && ".join(cmds)
 
     env = os.environ.copy()
-    env["HF_HUB_ENABLE_HF_TRANSFER"] = "1" if (options and options.get("hf_transfer")) else "0"
-    env["HF_HUB_DISABLE_XET"]        = "1" if (options and options.get("disable_xet"))  else "0"
+    env["HF_XET_HIGH_PERFORMANCE"] = "1" if (options and options.get("xet_fast")) else "0"
+    env["HF_HUB_DISABLE_XET"]      = "1" if (options and options.get("disable_xet")) else "0"
 
     subprocess.run(["clear"])
-    hf_status  = "ON"  if env["HF_HUB_ENABLE_HF_TRANSFER"] == "1" else "OFF"
-    xet_status = "OFF" if env["HF_HUB_DISABLE_XET"]        == "1" else "ON"
-    print(f"hf_transfer: {hf_status} | XET: {xet_status} | Executing: {full_cmd}")
+    fast_status = "ON"  if env["HF_XET_HIGH_PERFORMANCE"] == "1" else "OFF"
+    xet_status  = "OFF" if env["HF_HUB_DISABLE_XET"]      == "1" else "ON"
+    print(f"Xet: {xet_status} | high-perf: {fast_status} | Executing: {full_cmd}")
     print("-" * 60)
 
     try:
@@ -418,19 +421,19 @@ def main():
         if not variant:
             continue # User went back
 
-        # Step 3: Download options (hf_transfer, etc.)
+        # Step 3: Download options (Xet transfer settings)
         options = ask_download_options()
 
         if options is None:
             continue # User went back
 
         # Confirmation
-        hf_status  = "ON"  if options.get("hf_transfer") else "OFF"
-        xet_status = "OFF" if options.get("disable_xet")  else "ON"
+        fast_status = "ON"  if options.get("xet_fast") else "OFF"
+        xet_status  = "OFF" if options.get("disable_xet") else "ON"
         confirm_msg = (
             f"Model:   {selected_family['name']}\n"
             f"Variant: {variant['name']}\n"
-            f"hf_transfer: {hf_status} | XET: {xet_status}\n\n"
+            f"Xet: {xet_status} | high-perf: {fast_status}\n\n"
             f"This will run '{selected_family['script']}' with args:\n"
             f"{variant['args']}\n\n"
             "Proceed?"

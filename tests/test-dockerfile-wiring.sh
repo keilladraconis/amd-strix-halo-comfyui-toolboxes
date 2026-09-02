@@ -98,6 +98,19 @@ done
 check "no downloader passes --cache-dir alongside --local-dir" "" \
   "$(grep -ln 'cache-dir' scripts/get_*.sh)"
 
+# The hub must be free to reach 1.x: transformers and diffusers in this image
+# both declare huggingface-hub>=1.x, so pinning below 1.0 ships a dependency
+# set they consider unsatisfiable.
+check "the huggingface_hub install is not capped below 1.0" "" \
+  "$(grep -n 'huggingface_hub[^ ]*<1\.0' Dockerfile)"
+
+# hf_transfer is a deprecated no-op on hub 1.x ("'hf_transfer' is not used
+# anymore"); Xet's high-performance mode is the replacement the hub names.
+check "no downloader sets the deprecated hf_transfer variable" "" \
+  "$(grep -ln 'HF_HUB_ENABLE_HF_TRANSFER' scripts/get_*.sh)"
+check "the model manager offers the Xet high-performance toggle instead" "0" \
+  "$(grep -qF 'HF_XET_HIGH_PERFORMANCE' scripts/model_manager.py; echo $?)"
+
 # Each bundled workflow needs a README table row so §8.2's checklist holds.
 check "MiniMax-H3 appears in the README workflow table" "0" \
   "$(grep -qF '| **MiniMax-H3** |' README.md; echo $?)"
