@@ -37,7 +37,6 @@ download_if_missing () {
 
   "$HF" download "$repo" "$remote" \
       --repo-type model \
-      --cache-dir "$HF_HOME" \
       --local-dir "$STAGE"
   mv -f "$staged" "$dest_file"
 }
@@ -58,7 +57,7 @@ Maintenance:
   clean-cache   Remove Hugging Face cache (~/.cache/huggingface)
 
 Notes:
-- Downloads RESUME automatically via persistent --cache-dir and --local-dir.
+- Downloads RESUME automatically via the persistent staging directory.
 - The Turbo LoRA comes from larryvrh/MiniMax-H3-Turbo-Lora; everything else
   comes from Comfy-Org/MiniMax-H3.
 - The Turbo workflows also need the ComfyUI-MiniMax-H3-Turbo custom node,

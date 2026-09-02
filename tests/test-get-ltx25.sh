@@ -27,11 +27,16 @@ if [[ "$1" == "auth" && "$2" == "whoami" ]]; then
   [[ "${LOGGED_IN:-1}" == "1" ]] && { echo "someone"; exit 0; }
   exit 1
 fi
-repo="$2"; remote="$3"; stage=""
+repo="$2"; remote="$3"; stage=""; cachedir=""
 while [[ $# -gt 0 ]]; do
   [[ "$1" == "--local-dir" ]] && stage="$2"
+  [[ "$1" == "--cache-dir" ]] && cachedir="$2"
   shift
 done
+if [[ -n "$stage" && -n "$cachedir" ]]; then
+  echo "Error: Cannot use both \`--local-dir\` and \`--cache-dir\` at the same time." >&2
+  exit 1
+fi
 echo "$repo $remote" >>"$DOWNLOAD_LOG"
 [[ -n "${FAIL_MATCH:-}" && "$remote" == *"$FAIL_MATCH"* ]] && exit 1
 mkdir -p "$stage/$(dirname "$remote")"

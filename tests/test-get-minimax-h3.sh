@@ -21,12 +21,18 @@ new_home() {
   stub="$home/hf"
   cat >"$stub" <<'STUB'
 #!/usr/bin/env bash
-# Mimics: hf download <repo> <remote> --repo-type model --cache-dir D --local-dir S
-repo="$2"; remote="$3"; stage=""
+# Mimics `hf download <repo> <remote> --repo-type model --local-dir S`,
+# including huggingface_hub >= 1.0 rejecting --cache-dir alongside --local-dir.
+repo="$2"; remote="$3"; stage=""; cachedir=""
 while [[ $# -gt 0 ]]; do
   [[ "$1" == "--local-dir" ]] && stage="$2"
+  [[ "$1" == "--cache-dir" ]] && cachedir="$2"
   shift
 done
+if [[ -n "$stage" && -n "$cachedir" ]]; then
+  echo "Error: Cannot use both \`--local-dir\` and \`--cache-dir\` at the same time." >&2
+  exit 1
+fi
 echo "$repo $remote" >>"$DOWNLOAD_LOG"
 mkdir -p "$stage/$(dirname "$remote")"
 : >"$stage/$remote"

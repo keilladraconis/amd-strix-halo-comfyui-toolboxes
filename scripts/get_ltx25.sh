@@ -67,7 +67,6 @@ download_if_missing () {
 
   if ! "$HF" download "$repo" "$remote" \
       --repo-type model \
-      --cache-dir "$HF_HOME" \
       --local-dir "$STAGE"; then
     echo "  ⚠ Download failed: $remote" >&2
     [[ "$repo" == "$REPO" ]] && echo "    If this is a 401/403, see the gated-access note above." >&2
@@ -100,7 +99,7 @@ Notes:
 - Both video VAEs are fetched: the workflows default to the diffusion decoder
   (ltx-2.5-video-vae-bf16); ltx-2.5-video-vae-conv-bf16 is the lower-memory,
   faster alternative you can select in the loader node.
-- Downloads RESUME automatically via persistent --cache-dir and --local-dir.
+- Downloads RESUME automatically via the persistent staging directory.
 USAGE
 }
 

@@ -38,7 +38,6 @@ mkdir -p "$MODEL_HOME"/{text_encoders,vae,diffusion_models,clip_vision,latent_up
   
     "$HF" download "$repo" "$remote" \
         --repo-type model \
-        --cache-dir "$HF_HOME" \
         --local-dir "$STAGE"
     mv -f "$staged" "$dest_file"
   }
