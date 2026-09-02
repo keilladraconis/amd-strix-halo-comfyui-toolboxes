@@ -2,21 +2,22 @@
 # /opt/get_qwen.sh (resume-friendly, supports Qwen Image + Qwen Image Edit)
 set -euo pipefail
 
-export HF_HUB_ENABLE_HF_TRANSFER=1
+export HF_XET_HIGH_PERFORMANCE="${HF_XET_HIGH_PERFORMANCE:-1}"
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"   # persistent HF cache
 HF="/opt/venv/bin/hf"
 
 MODEL_HOME="$HOME/comfy-models"
 STAGE="$MODEL_HOME/.hf_stage_qwen"                      # persistent staging (resume support)
 
-mkdir -p "$MODEL_HOME"/{text_encoders,vae,diffusion_models,loras}
+mkdir -p "$MODEL_HOME"/{text_encoders,vae,diffusion_models,unet,loras}
 mkdir -p "$STAGE"
 
 dl() {
-  local repo="$1"; shift
-  local remote="$1"; shift
-  local subdir="$1"; shift
-  local dest="$MODEL_HOME/$subdir/$(basename "$remote")"
+  local repo="$1"
+  local remote="$2"
+  local subdir="$3"
+  local target_name="${4:-$(basename "$remote")}"
+  local dest="$MODEL_HOME/$subdir/$target_name"
   local staged="$STAGE/$remote"
 
   if [[ -f "$dest" ]]; then
@@ -37,12 +38,14 @@ echo "  1) Qwen-Image 2512 (20B text-to-image)"
 echo "  2) Qwen-Image-Edit 2511 (image editing)"
 echo "  3) Qwen-Image-Lightning LoRA (4-steps)"
 echo "  4) Qwen-Image-Edit-Lightning LoRA (4-steps, bf16)"
+echo "  5) Qwen-Image 2512 GGUF (Q4_K_M)"
+echo "  6) Qwen-Image-Edit 2511 GGUF (Q4_K_M)"
 
 # Check if an argument is provided
 if [ -n "${1:-}" ]; then
   choice="$1"
 else
-  read -rp "Enter 1, 2, 3 or 4: " choice
+  read -rp "Enter 1, 2, 3, 4, 5 or 6: " choice
 fi
 
 PRECISION="fp8"
@@ -85,6 +88,30 @@ case "$choice" in
     REPO="lightx2v/Qwen-Image-Edit-2511-Lightning"
     echo "==> Downloading Qwen-Image-Edit-Lightning LoRA"
     dl "$REPO" "Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors" "loras"
+    ;;
+  5)
+    echo "==> Downloading Qwen-Image 2512 GGUF (Q4_K_M)"
+    dl "unsloth/Qwen-Image-2512-GGUF" \
+       "qwen-image-2512-Q4_K_M.gguf" "unet"
+    dl "unsloth/Qwen2.5-VL-7B-Instruct-GGUF" \
+       "Qwen2.5-VL-7B-Instruct-UD-Q4_K_XL.gguf" "text_encoders"
+    dl "unsloth/Qwen2.5-VL-7B-Instruct-GGUF" \
+       "mmproj-BF16.gguf" "text_encoders" \
+       "Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf"
+    dl "Comfy-Org/Qwen-Image_ComfyUI" \
+       "split_files/vae/qwen_image_vae.safetensors" "vae"
+    ;;
+  6)
+    echo "==> Downloading Qwen-Image-Edit 2511 GGUF (Q4_K_M)"
+    dl "unsloth/Qwen-Image-Edit-2511-GGUF" \
+       "qwen-image-edit-2511-Q4_K_M.gguf" "unet"
+    dl "unsloth/Qwen2.5-VL-7B-Instruct-GGUF" \
+       "Qwen2.5-VL-7B-Instruct-UD-Q4_K_XL.gguf" "text_encoders"
+    dl "unsloth/Qwen2.5-VL-7B-Instruct-GGUF" \
+       "mmproj-BF16.gguf" "text_encoders" \
+       "Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf"
+    dl "Comfy-Org/Qwen-Image_ComfyUI" \
+       "split_files/vae/qwen_image_vae.safetensors" "vae"
     ;;
   *)
     echo "Invalid choice. Exiting."

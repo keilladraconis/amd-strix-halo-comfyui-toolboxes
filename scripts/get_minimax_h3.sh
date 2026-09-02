@@ -10,8 +10,9 @@ MODEL_HOME="$HOME/comfy-models"
 STAGE="$MODEL_HOME/.hf_stage_minimax_h3"
 REPO="Comfy-Org/MiniMax-H3"
 TURBO_REPO="larryvrh/MiniMax-H3-Turbo-Lora"
+GGUF_REPO="unsloth/MiniMax-H3-GGUF"
 
-mkdir -p "$MODEL_HOME"/{text_encoders,vae,diffusion_models,loras}
+mkdir -p "$MODEL_HOME"/{text_encoders,vae,diffusion_models,unet,loras}
 mkdir -p "$STAGE"
 
 download_if_missing() {
@@ -41,6 +42,9 @@ Targets:
   fl2va       T2V and I2V diffusion model
   ref2va      Reference-to-video diffusion model
   turbo       MiniMax-H3 Turbo LoRA (v4, step 600 EMA)
+  gguf-common Shared Q2_K_M text encoder and video/audio VAEs
+  gguf-fl2va  T2V/I2V UD-Q2_K_XL GGUF diffusion model
+  gguf-ref2va R2V Q2_K GGUF diffusion model
   all         All H3 models
 
 Maintenance:
@@ -63,6 +67,17 @@ case "${1:-}" in
     ;;
   turbo)
     download_if_missing "minimax_h3_turbo_v4_step600_ema.safetensors" "loras" "$TURBO_REPO"
+    ;;
+  gguf-common)
+    download_if_missing "qwen3vl_32b_minimax_h3-Q2_K_M.gguf" "text_encoders" "$GGUF_REPO"
+    download_if_missing "vae/minimax_h3_video_vae_fp16.safetensors" "vae"
+    download_if_missing "vae/minimax_h3_audio_vae_fp32.safetensors" "vae"
+    ;;
+  gguf-fl2va)
+    download_if_missing "minimax_h3_fl2va_pruned-UD-Q2_K_XL.gguf" "unet" "$GGUF_REPO"
+    ;;
+  gguf-ref2va)
+    download_if_missing "minimax_h3_ref2va_pruned-Q2_K.gguf" "unet" "$GGUF_REPO"
     ;;
   all)
     "$0" common
