@@ -99,10 +99,14 @@ RUN chmod -R a+rwX /opt/venv
 # Only load-bearing packages are listed: a pack needing anything else resolves
 # freely, and one that genuinely needs a newer pin now fails loudly at install
 # time instead of silently breaking ComfyUI.
+#
+# huggingface_hub is on this list because the `hf` CLI it provides is what every
+# get_*.sh downloader runs. ComfyUI-LTXVideo asks for huggingface_hub>=0.25.2,
+# which unconstrained resolved to 1.29.0 and broke every model download.
 RUN /opt/venv/bin/python - <<'PY' > /opt/venv/image-constraints.txt
 import importlib.metadata as md
 for pkg in ("torch", "torchvision", "torchaudio", "numpy",
-            "transformers", "pillow"):
+            "transformers", "pillow", "huggingface_hub"):
     try:
         print(f"{pkg}=={md.version(pkg)}")
     except md.PackageNotFoundError:

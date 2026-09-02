@@ -82,6 +82,22 @@ check "no Forge alias survives in the banner" "" \
 check "the build records an image constraints file" "0" \
   "$(grep -qF 'image-constraints.txt' Dockerfile; echo $?)"
 
+# Every package the toolbox's own scripts depend on at runtime must be
+# constrained, or a node pack's requirements can replace it. huggingface_hub
+# provides the `hf` CLI that all six downloaders shell out to; when it was left
+# off this list, ComfyUI-LTXVideo pulled it from 0.36.2 to 1.29.0 and every
+# model download failed on incompatible flags.
+constrained=$(sed -n '/image-constraints.txt/,/^PY$/p' Dockerfile)
+for pkg in torch numpy transformers pillow huggingface_hub; do
+  check "the constraints file pins $pkg" "0" \
+    "$(grep -qF "\"$pkg\"" <<<"$constrained"; echo $?)"
+done
+
+# The flag combination that broke downloads: huggingface_hub >= 1.0 rejects
+# --cache-dir alongside --local-dir, and --cache-dir was doing nothing anyway.
+check "no downloader passes --cache-dir alongside --local-dir" "" \
+  "$(grep -ln 'cache-dir' scripts/get_*.sh)"
+
 # Each bundled workflow needs a README table row so §8.2's checklist holds.
 check "MiniMax-H3 appears in the README workflow table" "0" \
   "$(grep -qF '| **MiniMax-H3** |' README.md; echo $?)"
