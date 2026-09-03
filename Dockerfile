@@ -115,6 +115,7 @@ PY
 
 # ── 8. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
+COPY --chmod=0644 scripts/comfy_launch_args.sh /etc/profile.d/02-comfy-launch-args.sh
 COPY --chmod=0644 scripts/99-toolbox-banner.sh /etc/profile.d/99-toolbox-banner.sh
 COPY --chmod=0644 scripts/zz-venv-last.sh /etc/profile.d/zz-venv-last.sh
 RUN printf 'ulimit -S -c 0\n' > /etc/profile.d/90-nocoredump.sh && chmod 0644 /etc/profile.d/90-nocoredump.sh

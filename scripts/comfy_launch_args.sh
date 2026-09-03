@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Single source of truth for ComfyUI's launch flags.
+#
+# Two consumers need an identical list: the `start_comfy_ui` alias in
+# 99-toolbox-banner.sh, and the --launch-extras that setup_comfy_cli.sh
+# persists into comfy-cli -- which is what the Comfy MCP's launch_comfyui tool
+# ends up running. When those two disagree, an agent silently gets an untuned
+# ComfyUI on the wrong port, so the flags live here and nowhere else.
+#
+# Installed as /etc/profile.d/02-comfy-launch-args.sh: sourced by login shells
+# before 99-toolbox-banner.sh, which defines the alias that calls it. Scripts
+# that are not login shells must source this file themselves.
+#
+# $HOME is expanded when the function is CALLED, not when the image is built --
+# the file is baked in, the home directory belongs to whoever entered the
+# toolbox.
+#
+# Why these flags (see README §2.2):
+#   --disable-mmap          mmap above 64GB is pathologically slow on gfx1151
+#   --bf16-vae              prevents OOM during VAE decode
+#   --cache-none            unified memory is GTT, not spare VRAM
+#   --base-directory        models, workflows and custom_nodes live in $HOME
+#   --enable-manager        ComfyUI-Manager is in core but opt-in for git installs
+
+comfy_launch_args() {
+  printf '%s' "--port 8188 \
+--base-directory $HOME/comfy-ui \
+--disable-mmap \
+--gpu-only \
+--disable-smart-memory \
+--cache-none \
+--bf16-vae \
+--enable-manager"
+}

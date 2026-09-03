@@ -101,13 +101,13 @@ printf 'GPU    : %s\n\n' "$GPU"
 printf 'Repo   : https://github.com/kyuz0/amd-strix-halo-comfyui-toolboxes\n'
 printf 'Image  : docker.io/kyuz0/amd-strix-halo-comfyui:latest\n\n'
 printf 'Included:\n'
-printf '  - %-16s → %s\n' "ComfyUI"            "start_comfy_ui (http://localhost:8000)"
+printf '  - %-16s → %s\n' "ComfyUI"            "start_comfy_ui (http://localhost:8188)"
 printf '  - %-16s → %s\n' "Install Workflows"  "install_workflows  (copy bundled workflows to ~/comfy-ui)"
 printf '  - %-16s → %s\n' "Custom Nodes"       "install_custom_nodes / update_custom_nodes"
 printf '  - %-16s → %s\n' "Model Manager"  "model_manager (select and install models for workflows)"
 
 echo
-printf 'SSH tip: ssh -L 8000:localhost:8000 user@host\n\n'
+printf 'SSH tip: ssh -L 8188:localhost:8188 user@host\n\n'
 
 # Aliases
 # Custom node packs and bundled workflows both live in the ComfyUI base
@@ -116,7 +116,7 @@ printf 'SSH tip: ssh -L 8000:localhost:8000 user@host\n\n'
 # can never start with an empty custom_nodes or workflows directory. Workflows
 # use --if-needed so saved edits are not overwritten on every launch. A failure
 # (no network, say) is reported but must not stop ComfyUI from starting.
-alias start_comfy_ui='/opt/install_workflows.sh --if-needed; /opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; cd /opt/ComfyUI && python main.py --port 8000 --base-directory $HOME/comfy-ui --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+alias start_comfy_ui='/opt/install_workflows.sh --if-needed; /opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; cd /opt/ComfyUI && python main.py $(comfy_launch_args)'
 alias install_custom_nodes='/opt/install_custom_nodes.sh'
 alias update_custom_nodes='/opt/install_custom_nodes.sh update'
 alias install_workflows='/opt/install_workflows.sh'
