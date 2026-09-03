@@ -105,6 +105,8 @@ printf '  - %-16s → %s\n' "ComfyUI"            "start_comfy_ui (http://localho
 printf '  - %-16s → %s\n' "Install Workflows"  "install_workflows  (copy bundled workflows to ~/comfy-ui)"
 printf '  - %-16s → %s\n' "Custom Nodes"       "install_custom_nodes / update_custom_nodes"
 printf '  - %-16s → %s\n' "Model Manager"  "model_manager (select and install models for workflows)"
+printf '  - %-16s → %s\n' "Node Manager"       "built into ComfyUI — Manager button in the sidebar"
+printf '  - %-16s → %s\n' "Comfy MCP"          "setup_comfy_cli (agent access — see README §4)"
 
 echo
 printf 'SSH tip: ssh -L 8188:localhost:8188 user@host\n\n'

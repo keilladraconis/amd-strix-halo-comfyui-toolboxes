@@ -182,6 +182,44 @@ check "install_custom_nodes.sh says the constraints file is image-wide" "0" \
 check "the installer's constraints comment does not still claim gradio" "" \
   "$(grep -n 'gradio' scripts/install_custom_nodes.sh)"
 
+# --- agent access docs -------------------------------------------------------
+check "the README documents agent access" "0" \
+  "$(grep -qF '## 4. Agent Access (Comfy MCP)' README.md; echo $?)"
+check "the README gives the claude mcp add one-liner" "0" \
+  "$(grep -qF 'claude mcp add comfy-mcp' README.md; echo $?)"
+check "the README names the host wrapper" "0" \
+  "$(grep -qF 'scripts/comfy-mcp-host.sh' README.md; echo $?)"
+# The port move is the only user-visible break in this change; it must not be a
+# silent edit that people discover through a dead SSH tunnel.
+check "the README calls out the port change" "0" \
+  "$(grep -qE '8000.*8188|8188.*8000' README.md; echo $?)"
+# Manager and install_node execute third-party code. Constrained now, but not
+# curated and not validated on gfx1151.
+check "the README warns that Manager installs uncurated code" "0" \
+  "$(grep -qiE 'manager.*(third-party|not validated|uncurated)' README.md; echo $?)"
+# The port callout necessarily quotes the OLD tunnel, so this asserts the new
+# port is documented rather than that 8000 is absent.
+check "the README documents the new port" "0" \
+  "$(grep -qF 'localhost:8188' README.md; echo $?)"
+
+# Renumbering five sections by hand is how a table of contents silently drifts
+# out of sync with its headings. Check every top-level numbered heading has a
+# matching TOC entry with the same number.
+toc_mismatch=""
+while IFS= read -r heading; do
+  title="${heading#\#\# }"
+  # `--` is required: the pattern starts with a dash, which grep would
+  # otherwise parse as an option (ugrep rejects it outright).
+  grep -qF -- "- [$title](#" README.md || toc_mismatch+="$title "
+done < <(grep -E '^## [0-9]+\. ' README.md)
+check "every numbered section appears in the table of contents" "" "$toc_mismatch"
+
+# --- banner ------------------------------------------------------------------
+check "the banner advertises the Comfy MCP" "0" \
+  "$(grep -qF 'Comfy MCP' scripts/99-toolbox-banner.sh; echo $?)"
+check "the banner advertises the built-in node manager" "0" \
+  "$(grep -qF 'Node Manager' scripts/99-toolbox-banner.sh; echo $?)"
+
 echo
 echo "$PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]
