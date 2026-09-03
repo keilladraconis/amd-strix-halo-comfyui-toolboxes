@@ -116,7 +116,8 @@ printf 'SSH tip: ssh -L 8188:localhost:8188 user@host\n\n'
 # can never start with an empty custom_nodes or workflows directory. Workflows
 # use --if-needed so saved edits are not overwritten on every launch. A failure
 # (no network, say) is reported but must not stop ComfyUI from starting.
-alias start_comfy_ui='/opt/install_workflows.sh --if-needed; /opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; cd /opt/ComfyUI && python main.py $(comfy_launch_args)'
+alias start_comfy_ui='/opt/install_workflows.sh --if-needed; /opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; /opt/setup_comfy_cli.sh >/dev/null || echo "⚠ comfy-cli not registered — the Comfy MCP may launch ComfyUI untuned."; cd /opt/ComfyUI && python main.py $(comfy_launch_args)'
+alias setup_comfy_cli='/opt/setup_comfy_cli.sh'
 alias install_custom_nodes='/opt/install_custom_nodes.sh'
 alias update_custom_nodes='/opt/install_custom_nodes.sh update'
 alias install_workflows='/opt/install_workflows.sh'

@@ -191,6 +191,7 @@ COPY --chmod=755 scripts/get_hunyuan15.sh /opt/
 COPY --chmod=755 scripts/get_ltx2.sh /opt/
 COPY --chmod=755 scripts/get_ltx25.sh /opt/
 COPY --chmod=755 scripts/get_minimax_h3.sh /opt/
+COPY --chmod=755 scripts/setup_comfy_cli.sh /opt/
 COPY scripts/benchmark_workflows.py /opt/
 COPY scripts/collect_perf_logs.py /opt/
 COPY scripts/model_manager.py /opt/
