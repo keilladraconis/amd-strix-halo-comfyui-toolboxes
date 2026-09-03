@@ -81,13 +81,18 @@ check "COMFY_TOOLBOX overrides the container name" "0" \
 # --- it must NOT be in the image ---------------------------------------------
 # It runs on the host, where `toolbox` exists. Copying it inside would offer a
 # path that recurses into the container it is already in.
+# Scoped to COPY/ADD instructions: a section-7 comment legitimately names this
+# script as what launches comfy-mcp, and an unscoped grep would forbid that.
 check "the host wrapper is not copied into the image" "" \
-  "$(grep -n 'comfy-mcp-host' Dockerfile)"
+  "$(grep -nE '^\s*(COPY|ADD)\b.*comfy-mcp-host' Dockerfile)"
 
 # --- no address override -----------------------------------------------------
 # The move to port 8188 exists precisely so no env block is needed here.
+# Scoped to non-comment lines: the header legitimately explains WHY no
+# COMFY_BIN or COMFYUI_URL is needed, and an unscoped grep would forbid
+# saying so.
 check "needs no address or binary overrides" "" \
-  "$(grep -nE 'COMFY_BIN|COMFY_LOCAL_URL|COMFYUI_URL' "$SCRIPT")"
+  "$(grep -vE '^\s*#' "$SCRIPT" | grep -nE 'COMFY_BIN|COMFY_LOCAL_URL|COMFYUI_URL')"
 
 echo
 echo "$PASS passed, $FAIL failed"

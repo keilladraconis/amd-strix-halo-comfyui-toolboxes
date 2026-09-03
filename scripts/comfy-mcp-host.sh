@@ -7,8 +7,10 @@
 # the live node registry all live in the container, so the server has to run
 # there too. `toolbox run` proxies stdio, which is all this needs to be.
 #
-# The server runs here because the full workspace lives inside the container,
-# including the node registry and model paths.
+# The alternative -- comfy-mcp on the host with COMFYUI_URL pointed at the
+# container -- was rejected: that variable remotes only the submit and job
+# tools, so search_nodes and search_models would read the host's non-existent
+# workspace and tell the agent this machine has no models.
 #
 # Register it with Claude Code:
 #   claude mcp add comfy-mcp -- /path/to/repo/scripts/comfy-mcp-host.sh
@@ -17,8 +19,8 @@
 #   "comfy-mcp": { "command": "/path/to/repo/scripts/comfy-mcp-host.sh" }
 #
 # No `env` block is needed: comfy-cli and comfy-mcp both default to
-# 127.0.0.1:8188, which is where this toolbox serves. The image's PATH
-# already puts /opt/venv/bin first.
+# 127.0.0.1:8188, which is where this toolbox serves, and COMFY_BIN is
+# unnecessary because the image's PATH already puts /opt/venv/bin first.
 #
 # Three details that are load-bearing:
 #
