@@ -144,9 +144,8 @@ ENV COMFY_NO_TELEMETRY=1
 RUN python -m pip install -r /opt/ComfyUI/manager_requirements.txt
 
 # comfy-cli is the engine the Comfy MCP shells out to for everything; comfy-mcp
-# is the stdio server itself, launched from the host by
-# scripts/comfy-mcp-host.sh. Both resolve by bare name because ENV PATH already
-# puts /opt/venv/bin first.
+# is the stdio server itself, launched from the host. Both resolve by bare name
+# because ENV PATH already puts /opt/venv/bin first.
 RUN python -m pip install "comfy-cli>=1.20" comfy-mcp
 
 # Make the venv writable by the running (non-root) toolbox user, like every
