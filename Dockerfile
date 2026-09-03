@@ -81,14 +81,6 @@ RUN python -m pip install -r requirements.txt && \
 # start_comfy_ui — and installs each pack's own requirements.txt into the venv,
 # which is why the venv is made world-writable below.
 
-# Make the venv writable by the running (non-root) toolbox user, like every
-# other install target above. Custom Nodes install node dependencies into
-# the venv at runtime; if it isn't writable, pip falls back to
-# `pip install --user`, which pip then rejects ("will not install to the user
-# site because it will lack sys.path precedence ..."). Toolbox containers are
-# per-user, so a world-writable venv is not a multi-tenant concern.
-RUN chmod -R a+rwX /opt/venv
-
 # Constraints for runtime custom-node dependency installs. Node packs list
 # their own requirements, and pip will happily satisfy them by replacing what
 # the image carefully pinned — observed: transformers 4.56.2 -> 5.16.1 and
@@ -112,6 +104,61 @@ for pkg in ("torch", "torchvision", "torchaudio", "numpy",
     except md.PackageNotFoundError:
         pass
 PY
+
+# Promote the constraints file from an install_custom_nodes.sh detail to a
+# container-wide invariant. Enabling ComfyUI-Manager and shipping the Comfy MCP
+# both open install paths this image does not curate: the Manager UI,
+# comfy-mcp's install_node, and its update_comfyui(target="comfy") -- which
+# re-runs ComfyUI's own requirements.txt, and that file lists a bare `torch`.
+# Any of them would otherwise swap the ROCm nightly for a generic PyPI wheel and
+# take gfx1151 support with it. A user typing `pip install -U torch` is covered
+# by the same env var.
+#
+# pip's --constraint is an append option, so install_custom_nodes.sh's explicit
+# `-c` still stacks its own kornia pin on top rather than replacing these.
+# UV_CONSTRAINT covers the same ground for comfy-cli and comfyui-manager, which
+# both use uv for some installs.
+ENV PIP_CONSTRAINT=/opt/venv/image-constraints.txt
+ENV UV_CONSTRAINT=/opt/venv/image-constraints.txt
+
+# comfy-cli's telemetry clients (mixpanel, posthog) honour both of these, and
+# comfy-cli already defaults to no tracking when non-interactive. Setting them
+# explicitly also guarantees the first-run consent prompt can never appear: on
+# the Comfy MCP path stdout is the JSON-RPC transport, and a rich prompt written
+# there would corrupt the stream.
+ENV DO_NOT_TRACK=1
+ENV COMFY_NO_TELEMETRY=1
+
+# ComfyUI-Manager is in core now, but a git-clone install has to opt in: core
+# keeps it out of requirements.txt and ships it in manager_requirements.txt,
+# enabled with --enable-manager (see scripts/comfy_launch_args.sh). Taken from
+# core's own file so its version tracks core rather than a stale hand-written
+# pin. This is deliberately below the constraints ENV above: comfyui_manager
+# depends on unpinned transformers and huggingface-hub>0.20, which is precisely
+# what the constraints file exists to hold still.
+#
+# Manager does not replace scripts/install_custom_nodes.sh. The six bundled
+# packs are what the shipped workflows require, and Manager installs pack
+# requirements with no constraints of its own -- it is here for packs the USER
+# chooses to add.
+RUN python -m pip install -r /opt/ComfyUI/manager_requirements.txt
+
+# comfy-cli is the engine the Comfy MCP shells out to for everything; comfy-mcp
+# is the stdio server itself, launched from the host by
+# scripts/comfy-mcp-host.sh. Both resolve by bare name because ENV PATH already
+# puts /opt/venv/bin first.
+RUN python -m pip install "comfy-cli>=1.20" comfy-mcp
+
+# Make the venv writable by the running (non-root) toolbox user, like every
+# other install target above. Custom Nodes install node dependencies into
+# the venv at runtime; if it isn't writable, pip falls back to
+# `pip install --user`, which pip then rejects ("will not install to the user
+# site because it will lack sys.path precedence ..."). Toolbox containers are
+# per-user, so a world-writable venv is not a multi-tenant concern.
+#
+# Must stay LAST in this section: anything pip-installed after this chmod is
+# root-owned, and the toolbox user then cannot install node dependencies.
+RUN chmod -R a+rwX /opt/venv
 
 # ── 8. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
