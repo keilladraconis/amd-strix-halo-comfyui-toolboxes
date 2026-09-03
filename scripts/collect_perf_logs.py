@@ -68,7 +68,7 @@ def main():
     
     # Server config
     server_host = "127.0.0.1"
-    server_port = 8000
+    server_port = 8188
     server_addr = f"{server_host}:{server_port}"
     server_url = f"http://{server_addr}"
     

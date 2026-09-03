@@ -32,11 +32,12 @@ This is a hobby project maintained in my spare time. If you find these toolboxes
 - [1. Included Workflows](#1-included-workflows)
 - [2. Toolbox Setup](#2-toolbox-setup)
 - [3. First Run Setup (Required)](#3-first-run-setup-required)
-- [4. Benchmarks](#4-benchmarks)
-- [5. Kernel Log Collection](#5-kernel-log-collection)
-- [6. Maintainer Notes](#6-maintainer-notes)
-- [7. Host Configuration](#7-host-configuration)
-- [8. Development Guide](#8-development-guide)
+- [4. Agent Access (Comfy MCP)](#4-agent-access-comfy-mcp)
+- [5. Benchmarks](#5-benchmarks)
+- [6. Kernel Log Collection](#6-kernel-log-collection)
+- [7. Maintainer Notes](#7-maintainer-notes)
+- [8. Host Configuration](#8-host-configuration)
+- [9. Development Guide](#9-development-guide)
 
 ---
 
@@ -62,7 +63,7 @@ The repository comes with a collection of ComfyUI workflows pre-validated on thi
 > The two **MiniMax-H3** and two **LTX Video 2.5** entries are newly added and
 > have not yet been validated on this hardware. They also ship in UI format
 > only, so they have no benchmark coverage — see
-> [§8.2](#82-adding-or-updating-workflows).
+> [§9.2](#92-adding-or-updating-workflows).
 
 > [!IMPORTANT]
 > **LTX Video 2.5 needs a Hugging Face login.** `Lightricks/LTX-2.5` is a gated
@@ -104,6 +105,10 @@ Once inside, you have access to a full ROCm environment with PyTorch, ComfyUI, a
 > *   **`--bf16-vae`**: Prevents OOM during VAE decoding.
 > *   **`--disable-mmap`**: **Critical for Strix Halo (gfx1151)**. Memory mapping above 64GB is currently very slow due to a ROCm issue; disabling it prevents performance degradation and hangs.
 > *   **`--cache-none`**: Disables model caching to manage the unified memory more aggressively (`GTT` vs `RAM`).
+> These flags live in `scripts/comfy_launch_args.sh` (installed as
+> `/etc/profile.d/02-comfy-launch-args.sh`), which is also what comfy-cli
+> replays when an agent launches ComfyUI through the Comfy MCP — so both paths
+> get the same tuning. Change them there, then run `setup_comfy_cli`.
 
 ### 2.3. Updating the Toolbox
 
@@ -168,7 +173,71 @@ Select the workflow you want to run (e.g., "Wan 2.2 - Text to Video"), and the m
 
 ---
 
-## 4. Benchmarks
+## 4. Agent Access (Comfy MCP)
+
+[Comfy MCP](https://blog.comfy.org/p/open-sourcing-comfy-mcp-on-local) lets an AI agent — Claude Code, Claude Desktop, Cursor — drive this toolbox's ComfyUI: build and validate workflows, run them and collect the outputs, search the installed nodes and the models on disk, and read the GPU it is running on.
+
+The server ships in the image. It is a **stdio** server, so your agent spawns it as a subprocess — and because ComfyUI, comfy-cli, the venv and your models all live inside the container, the server has to run there too. `scripts/comfy-mcp-host.sh` does that with `toolbox run`.
+
+### 4.1 Register it
+
+```bash
+claude mcp add comfy-mcp -- /path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh
+```
+
+For Claude Desktop (`claude_desktop_config.json`) or Cursor (`~/.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "comfy-mcp": {
+      "command": "/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh"
+    }
+  }
+}
+```
+
+No `env` block is needed. ComfyUI serves on comfy-cli's default `127.0.0.1:8188`, and the image already puts the venv first on `PATH`.
+
+If you renamed your container, set `COMFY_TOOLBOX` rather than editing the script:
+
+```json
+{
+  "mcpServers": {
+    "comfy-mcp": {
+      "command": "/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh",
+      "env": { "COMFY_TOOLBOX": "my-container-name" }
+    }
+  }
+}
+```
+
+### 4.2 Using it
+
+Start ComfyUI with `start_comfy_ui` in the toolbox first, or let the agent call `launch_comfyui`. Either path produces the same instance: the flags live in one place (`scripts/comfy_launch_args.sh`) that both the alias and comfy-cli read. Ask the agent to call `server_info` to confirm it can see the GPU.
+
+To re-register comfy-cli by hand after changing those flags:
+
+```bash
+setup_comfy_cli
+```
+
+### 4.3 The built-in node manager
+
+ComfyUI-Manager is now part of ComfyUI core rather than a custom node, and this toolbox enables it (`--enable-manager`). You get the **Manager** button in the ComfyUI sidebar for searching and installing node packs.
+
+> [!WARNING]
+> Manager — and the MCP's `install_node` — install **third-party code that this toolbox does not curate and has not validated on gfx1151**. The image sets `PIP_CONSTRAINT` so those installs cannot replace the pinned ROCm PyTorch, but a pack can still fail to load, pull a heavy dependency, or conflict with another pack. The six bundled packs in `scripts/install_custom_nodes.sh` remain the supported set; if an install breaks something, `./refresh-toolbox.sh` is the recovery path.
+
+> [!WARNING]
+> **Agent-side model and node paths are not yet verified.** comfy-cli has no equivalent of ComfyUI's `--base-directory`. `setup_comfy_cli` registers `/opt/ComfyUI` as the workspace, but the running server reads models and custom nodes from `~/comfy-ui`. Agent tools that resolve paths through comfy-cli rather than through ComfyUI's HTTP API — `install_node`, `search_models`, `download_model` — may act on the wrong directory and appear to succeed while the server never sees the result. Until this is confirmed on hardware, prefer `model_manager` and `install_custom_nodes` for anything you need to actually load, and treat the agent's model list as advisory. The same uncertainty applies to packs installed through the Manager UI.
+
+> [!IMPORTANT]
+> **ComfyUI moved from port 8000 to 8188** so it matches what comfy-cli and comfy-mcp expect. Update any `ssh -L 8000:localhost:8000` tunnel to `ssh -L 8188:localhost:8188`, and any bookmark to `http://localhost:8188`. The banner prints the current port and SSH tip every time you enter the toolbox.
+
+---
+
+## 5. Benchmarks
 
 We maintain a list of performance benchmarks for these workflows on the AMD Ryzen AI Max “Strix Halo”.
 
@@ -181,7 +250,7 @@ python /opt/benchmark_workflows.py
 
 ---
 
-## 5. Kernel Log Collection
+## 6. Kernel Log Collection
 
 We are working directly with AMD to improve kernel stability and performance for the Strix Halo (gfx1151). If you encounter performance issues or crashes, you can help by collecting execution logs.
 
@@ -205,7 +274,7 @@ Please zip the `perf_logs` folder and attach it to the GitHub issue mentioned ab
 
 ---
 
-## 6. Maintainer Notes
+## 7. Maintainer Notes
 
 ### Publishing Log Releases
 
@@ -225,11 +294,11 @@ To publish collected performance logs as a GitHub Release (for tracking historic
 
 ---
 
-## 7. Host Configuration
+## 8. Host Configuration
 
 This should work on any Strix Halo. For a complete list of available hardware, see: [Strix Halo Hardware Database](https://strixhalo-homelab.d7.wtf/Hardware)
 
-### 7.1 Test Configuration
+### 8.1 Test Configuration
 
 |                    |                                               |
 | ------------------ | --------------------------------------------- |
@@ -241,7 +310,7 @@ This should work on any Strix Halo. For a complete list of available hardware, s
 | **Host OS**        | 6.18.4-100.fc43.x86\_64                       |
 | **Linux firmware** | 20251111                                      |
 
-### 7.2 Kernel Parameters
+### 8.2 Kernel Parameters
 
 Add these boot parameters to enable unified memory while reserving a minimum of 4 GiB for the OS (max 128 GiB for iGPU):
 
@@ -262,11 +331,11 @@ sudo reboot
 
 ---
 
-## 8. Development Guide
+## 9. Development Guide
 
 This section covers how to build and test changes to this toolbox locally, and how to add or update workflows.
 
-### 8.1. Building and Testing the Image Locally
+### 9.1. Building and Testing the Image Locally
 
 The `refresh-toolbox.sh` script supports a `--local` flag that builds the `Dockerfile` from your local checkout instead of pulling from the registry. Use this when iterating on the image (e.g., adding packages, changing scripts):
 
@@ -309,7 +378,7 @@ The flag only affects `--local` builds; published images are built with `no-cach
 > [!NOTE]
 > When adding a new `git clone` to the `Dockerfile`, put it **below** the source refresh barrier — anything above it is exempt from `--refresh-sources` and will silently go stale. `tests/test-dockerfile-wiring.sh` checks this.
 
-### 8.2. Adding or Updating Workflows
+### 9.2. Adding or Updating Workflows
 
 Workflows are stored in two formats, both required:
 

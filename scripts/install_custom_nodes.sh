@@ -22,9 +22,10 @@ PY="${PY:-/opt/venv/bin/python}"
 # toolbox reinstalls deps even though the clones in $HOME persisted.
 STAMP="${STAMP:-/opt/venv/.custom-nodes-deps}"
 # Stops a pack's requirements.txt from replacing the image's pinned torch,
-# transformers, numpy, pillow or gradio. Written at build time from what is
-# actually installed. Absent (e.g. an older image) means installs run
-# unconstrained, as they did before.
+# transformers, numpy or pillow. Written at build time from what is actually
+# installed, and pointed at by PIP_CONSTRAINT/UV_CONSTRAINT image-wide, so the
+# explicit -c below only adds the known-bad pins on top. Absent means the image
+# is older than that change, or broken.
 CONSTRAINTS="${CONSTRAINTS:-/opt/venv/image-constraints.txt}"
 
 # Known-bad upstream combinations, applied on top of the image constraints.
@@ -118,8 +119,11 @@ if [[ "$changed" == "1" || ! -f "$STAMP" || "$MODE" == "update" ]]; then
   if [[ -f "$CONSTRAINTS" ]]; then
     cat "$CONSTRAINTS" > "$effective"
   else
-    echo "⚠ No constraints file at $CONSTRAINTS — node dependencies may replace" >&2
-    echo "  the image's pinned torch/transformers/numpy/pillow." >&2
+    echo "⚠ No constraints file at $CONSTRAINTS." >&2
+    echo "  This file is now the image-wide pin set — PIP_CONSTRAINT and" >&2
+    echo "  UV_CONSTRAINT point at it too — so without it nothing stops a node" >&2
+    echo "  pack, ComfyUI-Manager or the Comfy MCP from replacing the ROCm" >&2
+    echo "  torch. Refresh the toolbox rather than installing over this." >&2
   fi
   printf '%s\n' "${NODE_PINS[@]}" >> "$effective"
   pip_args=(--quiet --prefer-binary -c "$effective")
