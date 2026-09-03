@@ -185,8 +185,23 @@ check "the installer's constraints comment does not still claim gradio" "" \
 # --- agent access docs -------------------------------------------------------
 check "the README documents agent access" "0" \
   "$(grep -qF '## 4. Agent Access (Comfy MCP)' README.md; echo $?)"
-check "the README gives the claude mcp add one-liner" "0" \
-  "$(grep -qF 'claude mcp add comfy-mcp' README.md; echo $?)"
+# opencode has no `mcp add` CLI, so registration is a config-file edit. Its
+# schema differs from every other client's in three ways that are easy to get
+# wrong when copying their docs: the key is `mcp` (not `mcpServers`), `command`
+# is an ARRAY, and the env key is `environment` (not `env`).
+check "the README names opencode's config file" "0" \
+  "$(grep -qF 'opencode.json' README.md; echo $?)"
+check "the README shows opencode's array command form" "0" \
+  "$(grep -qE '"command": \[' README.md; echo $?)"
+check "the README uses opencode's environment key, not env" "0" \
+  "$(grep -qF '"environment": { "COMFY_TOOLBOX"' README.md; echo $?)"
+# The switch to opencode must be complete: a half-replaced section would leave
+# a reader following instructions for a client this repo no longer documents.
+# `"mcpServers"` is matched WITH quotes so it only fires inside a JSON block:
+# the prose above legitimately names the key to warn readers off it, and an
+# unscoped pattern would forbid saying so.
+check "no stale Claude/Cursor MCP instructions survive" "" \
+  "$(grep -nE 'claude mcp add|"mcpServers"|cursor/mcp\.json' README.md)"
 check "the README names the host wrapper" "0" \
   "$(grep -qF 'scripts/comfy-mcp-host.sh' README.md; echo $?)"
 # The port move is the only user-visible break in this change; it must not be a

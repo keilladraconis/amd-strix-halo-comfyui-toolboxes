@@ -175,38 +175,48 @@ Select the workflow you want to run (e.g., "Wan 2.2 - Text to Video"), and the m
 
 ## 4. Agent Access (Comfy MCP)
 
-[Comfy MCP](https://blog.comfy.org/p/open-sourcing-comfy-mcp-on-local) lets an AI agent — Claude Code, Claude Desktop, Cursor — drive this toolbox's ComfyUI: build and validate workflows, run them and collect the outputs, search the installed nodes and the models on disk, and read the GPU it is running on.
+[Comfy MCP](https://blog.comfy.org/p/open-sourcing-comfy-mcp-on-local) lets an AI agent such as [opencode](https://opencode.ai) drive this toolbox's ComfyUI: build and validate workflows, run them and collect the outputs, search the installed nodes and the models on disk, and read the GPU it is running on.
 
 The server ships in the image. It is a **stdio** server, so your agent spawns it as a subprocess — and because ComfyUI, comfy-cli, the venv and your models all live inside the container, the server has to run there too. `scripts/comfy-mcp-host.sh` does that with `toolbox run`.
 
 ### 4.1 Register it
 
-```bash
-claude mcp add comfy-mcp -- /path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh
-```
-
-For Claude Desktop (`claude_desktop_config.json`) or Cursor (`~/.cursor/mcp.json`):
+opencode has no `mcp add` command — add the server to `~/.config/opencode/opencode.json` by hand. (An `opencode.json` in a project directory works too, if you would rather register it per project than globally.)
 
 ```json
 {
-  "mcpServers": {
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
     "comfy-mcp": {
-      "command": "/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh"
+      "type": "local",
+      "command": ["/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh"],
+      "enabled": true
     }
   }
 }
 ```
 
-No `env` block is needed. ComfyUI serves on comfy-cli's default `127.0.0.1:8188`, and the image already puts the venv first on `PATH`.
+Three things differ from most MCP documentation you will find, and all three are easy to carry over wrongly:
+
+* the key is **`mcp`**, not `mcpServers`
+* **`command` is an array**, not a string
+* the environment key is **`environment`**, not `env`
+
+If you already have an `opencode.json` — most people do, with `model` and `provider` in it — add the `mcp` key alongside those rather than replacing the file.
+
+No `environment` block is needed for a default setup. ComfyUI serves on comfy-cli's default `127.0.0.1:8188`, and the image already puts the venv first on `PATH`.
 
 If you renamed your container, set `COMFY_TOOLBOX` rather than editing the script:
 
 ```json
 {
-  "mcpServers": {
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
     "comfy-mcp": {
-      "command": "/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh",
-      "env": { "COMFY_TOOLBOX": "my-container-name" }
+      "type": "local",
+      "command": ["/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh"],
+      "enabled": true,
+      "environment": { "COMFY_TOOLBOX": "my-container-name" }
     }
   }
 }
