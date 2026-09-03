@@ -202,7 +202,14 @@ No `env` block is needed. ComfyUI serves on comfy-cli's default `127.0.0.1:8188`
 If you renamed your container, set `COMFY_TOOLBOX` rather than editing the script:
 
 ```json
-"env": { "COMFY_TOOLBOX": "my-container-name" }
+{
+  "mcpServers": {
+    "comfy-mcp": {
+      "command": "/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh",
+      "env": { "COMFY_TOOLBOX": "my-container-name" }
+    }
+  }
+}
 ```
 
 ### 4.2 Using it
@@ -221,6 +228,9 @@ ComfyUI-Manager is now part of ComfyUI core rather than a custom node, and this 
 
 > [!WARNING]
 > Manager — and the MCP's `install_node` — install **third-party code that this toolbox does not curate and has not validated on gfx1151**. The image sets `PIP_CONSTRAINT` so those installs cannot replace the pinned ROCm PyTorch, but a pack can still fail to load, pull a heavy dependency, or conflict with another pack. The six bundled packs in `scripts/install_custom_nodes.sh` remain the supported set; if an install breaks something, `./refresh-toolbox.sh` is the recovery path.
+
+> [!WARNING]
+> **Agent-side model and node paths are not yet verified.** comfy-cli has no equivalent of ComfyUI's `--base-directory`. `setup_comfy_cli` registers `/opt/ComfyUI` as the workspace, but the running server reads models and custom nodes from `~/comfy-ui`. Agent tools that resolve paths through comfy-cli rather than through ComfyUI's HTTP API — `install_node`, `search_models`, `download_model` — may act on the wrong directory and appear to succeed while the server never sees the result. Until this is confirmed on hardware, prefer `model_manager` and `install_custom_nodes` for anything you need to actually load, and treat the agent's model list as advisory. The same uncertainty applies to packs installed through the Manager UI.
 
 > [!IMPORTANT]
 > **ComfyUI moved from port 8000 to 8188** so it matches what comfy-cli and comfy-mcp expect. Update any `ssh -L 8000:localhost:8000` tunnel to `ssh -L 8188:localhost:8188`, and any bookmark to `http://localhost:8188`. The banner prints the current port and SSH tip every time you enter the toolbox.

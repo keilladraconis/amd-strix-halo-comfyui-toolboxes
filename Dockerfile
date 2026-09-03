@@ -141,6 +141,10 @@ ENV COMFY_NO_TELEMETRY=1
 # packs are what the shipped workflows require, and Manager installs pack
 # requirements with no constraints of its own -- it is here for packs the USER
 # chooses to add.
+#
+# manager_requirements.txt only exists in ComfyUI 0.34 and later, so a stale
+# cached clone fails here with a generic pip "file not found" error;
+# ./refresh-toolbox.sh --local --refresh-sources is the fix.
 RUN python -m pip install -r /opt/ComfyUI/manager_requirements.txt
 
 # comfy-cli is the engine the Comfy MCP shells out to for everything; comfy-mcp

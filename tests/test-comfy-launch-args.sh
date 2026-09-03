@@ -46,7 +46,7 @@ check "enables the built-in ComfyUI-Manager" "0" \
 check "start_comfy_ui calls comfy_launch_args" "0" \
   "$(grep -qE 'alias start_comfy_ui=.*\$\(comfy_launch_args\)' "$BANNER"; echo $?)"
 check "start_comfy_ui hardcodes no launch flags of its own" "" \
-  "$(grep -oE 'alias start_comfy_ui=.*' "$BANNER" | grep -oE '\-\-(port|base-directory|disable-mmap|gpu-only|disable-smart-memory|cache-none|bf16-vae|enable-manager)')"
+  "$(grep -oE 'alias start_comfy_ui=.*' "$BANNER" | grep -oE -- '--(port|base-directory|disable-mmap|gpu-only|disable-smart-memory|cache-none|bf16-vae|enable-manager)')"
 
 # --- every consumer agrees on 8188 ------------------------------------------
 check "the banner advertises port 8188" "0" \
@@ -79,5 +79,25 @@ check "the launch args file sorts before the banner in profile.d" "yes" \
   "$([[ -n "$args_dest" && -n "$banner_dest" && "${args_dest##*/}" < "${banner_dest##*/}" ]] && echo yes || echo no)"
 
 echo
+
+# --- the tuning flags must agree everywhere they are written ----------------
+# The two benchmark scripts spawn their own ComfyUI and cannot source a shell
+# function, so the flags are necessarily duplicated. This is what stops the
+# copies drifting apart when a flag is tuned.
+TUNING="--disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae"
+for f in $TUNING; do
+  check "comfy_launch_args emits $f" "0" "$(grep -qF -- "$f" <<<"$ARGS"; echo $?)"
+  check "benchmark_workflows.py spawns with $f" "0" \
+    "$(grep -qF -- "\"$f\"" scripts/benchmark_workflows.py; echo $?)"
+  check "collect_perf_logs.py spawns with $f" "0" \
+    "$(grep -qF -- "\"$f\"" scripts/collect_perf_logs.py; echo $?)"
+done
+# A benchmark run must not carry --enable-manager: it would let a background
+# install mutate the environment mid-measurement.
+check "benchmark_workflows.py does not enable the node manager" "" \
+  "$(grep -n -- '--enable-manager' scripts/benchmark_workflows.py)"
+check "collect_perf_logs.py does not enable the node manager" "" \
+  "$(grep -n -- '--enable-manager' scripts/collect_perf_logs.py)"
+
 echo "$PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]

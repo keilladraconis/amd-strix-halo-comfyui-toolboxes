@@ -46,7 +46,7 @@ check "the host wrapper is executable" "0" "$([[ -x "$SCRIPT" ]]; echo $?)"
 # the client reports an opaque handshake failure.
 E="$(new_env)"
 run "$E"
-check "nothing reaches stdout except the server's own output" "MCP-STDOUT-MARKER" "$STDOUT"
+check "the wrapper writes nothing to stdout before exec" "MCP-STDOUT-MARKER" "$STDOUT"
 check "the setup call's output is redirected away from stdout" "0" \
   "$(grep -qF 'setup_comfy_cli.sh >/dev/null 2>&1' "$SCRIPT"; echo $?)"
 
@@ -95,5 +95,15 @@ check "needs no address or binary overrides" "" \
   "$(grep -vE '^\s*#' "$SCRIPT" | grep -nE 'COMFY_BIN|COMFY_LOCAL_URL|COMFYUI_URL')"
 
 echo
+
+# --- the banner must not speak on the MCP path ------------------------------
+# `sh -lc` sources /etc/profile.d/99-toolbox-banner.sh, and stdout is the
+# JSON-RPC transport. Source it non-interactively and assert silence, rather
+# than trusting the base image's profile.d redirection.
+BANNER_OUT="$(bash -c '. "$PWD/scripts/99-toolbox-banner.sh"' 2>/dev/null)"
+check "the banner writes nothing to stdout in a non-interactive shell" "" "$BANNER_OUT"
+check "the banner guards on interactivity rather than relying on /etc/profile" "0" \
+  "$(grep -qE '^\s*\*i\*\)' scripts/99-toolbox-banner.sh; echo $?)"
+
 echo "$PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]

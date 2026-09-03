@@ -34,5 +34,11 @@
 #     process, and a wrapper left in between swallows the signal.
 set -uo pipefail
 
+if ! command -v toolbox >/dev/null 2>&1; then
+  echo "comfy-mcp-host: \`toolbox\` not found on PATH." >&2
+  echo "  This script runs on the HOST and needs toolbox (podman) installed." >&2
+  exit 1
+fi
+
 exec toolbox run --container "${COMFY_TOOLBOX:-amd-strix-halo-comfyui}" \
   -- sh -lc '/opt/setup_comfy_cli.sh >/dev/null 2>&1; exec comfy-mcp'

@@ -74,6 +74,19 @@ sources_line() {
   fi
 }
 
+# Everything below writes to stdout, and stdout is the Comfy MCP's JSON-RPC
+# transport: scripts/comfy-mcp-host.sh runs `sh -lc`, a login shell, which
+# sources this file. Fedora's /etc/profile happens to source profile.d with
+# >/dev/null when non-interactive, which is the only reason a stray banner has
+# never corrupted the protocol stream. Do not rely on that — bail out
+# explicitly. Aliases below are not expanded in a non-interactive shell anyway,
+# and comfy_launch_args() lives in 02-comfy-launch-args.sh, so nothing the MCP
+# path needs is lost by returning here.
+case $- in
+  *i*) ;;
+  *) return 0 ;;
+esac
+
 MACHINE="$(oem_info)"
 GPU="$(gpu_name)"
 ROCM_VER="$(rocm_version)"

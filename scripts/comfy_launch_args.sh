@@ -21,6 +21,14 @@
 #   --cache-none            unified memory is GTT, not spare VRAM
 #   --base-directory        models, workflows and custom_nodes live in $HOME
 #   --enable-manager        ComfyUI-Manager is in core but opt-in for git installs
+#
+# NOT the only place these flags appear. benchmark_workflows.py and
+# collect_perf_logs.py spawn their own ComfyUI and hardcode the same five
+# tuning flags, deliberately diverging elsewhere (they add --output-directory
+# and omit --enable-manager, which a benchmark run must not have). They cannot
+# source a shell function, so tests/test-comfy-launch-args.sh asserts the
+# tuning subset stays byte-identical across all three. Change a tuning flag
+# here and that test tells you which other files to change.
 
 comfy_launch_args() {
   printf '%s' "--port 8188 \

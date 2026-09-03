@@ -15,6 +15,16 @@
 #
 # Re-running is harmless: `comfy set-default` overwrites its own config.
 #
+# KNOWN LIMITATION: comfy-cli has no equivalent of ComfyUI's --base-directory.
+# The workspace registered here is /opt/ComfyUI, while the running server reads
+# models, workflows and custom_nodes from $HOME/comfy-ui. Agent-side operations
+# that resolve paths through comfy-cli rather than through ComfyUI's HTTP API
+# (install_node, search_models, download_model) may therefore act on
+# /opt/ComfyUI/... and appear to succeed while the server never sees the result.
+# Unverified — it depends on which of the two comfy-mcp actually uses. See
+# README section 4.3 and the post-build check in the design doc before relying
+# on those tools.
+#
 # Usage:
 #   setup_comfy_cli            Register the workspace and its launch flags
 set -uo pipefail
@@ -36,7 +46,7 @@ fi
 # MCP path would be written into the JSON-RPC stream.
 if "$COMFY" --skip-prompt set-default "$WORKSPACE" \
      --launch-extras "$(comfy_launch_args)" >/dev/null 2>&1; then
-  echo "✅ comfy-cli pointed at $WORKSPACE"
+  echo "✅ comfy-cli pointed at $WORKSPACE" >&2
 else
   echo "⚠ Could not register $WORKSPACE with comfy-cli — the Comfy MCP may" >&2
   echo "  launch ComfyUI without this toolbox's tuning flags." >&2
