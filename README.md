@@ -34,28 +34,47 @@ This is a hobby project maintained in my spare time. If you find these toolboxes
 - [1. Included Workflows](#1-included-workflows)
 - [2. Manual Toolbox Setup](#2-manual-toolbox-setup)
 - [3. First Run Setup (Required)](#3-first-run-setup-required)
-- [4. Benchmarks](#4-benchmarks)
-- [5. Kernel Log Collection](#5-kernel-log-collection)
-- [6. Maintainer Notes](#6-maintainer-notes)
+- [4. Agent Access (Comfy MCP)](#4-agent-access-comfy-mcp)
+- [5. Benchmarks](#5-benchmarks)
+- [6. Kernel Log Collection](#6-kernel-log-collection)
+- [7. Maintainer Notes](#7-maintainer-notes)
+- [8. Host Configuration](#8-host-configuration)
+- [9. Development Guide](#9-development-guide)
 
 ---
 
 ## 1. Included Workflows
 
-The repository comes with a collection of ComfyUI workflows bundled into the image. API benchmark workflows are also available in `workflows/API` (mapped to `/opt/comfy-workflows` inside the container).
+The repository comes with a collection of ComfyUI workflows pre-validated on this hardware. UI-format workflows are baked into the image at `/opt/comfy-workflows/` and copied to `~/comfy-ui/user/default/workflows/` by `install_workflows`. API-format workflows live under `/opt/comfy-workflows/API/` and are used by the benchmark scripts.
 
 | Workflow | Type | Description |
 | :--- | :--- | :--- |
 | **HunyuanVideo 1.5** | I2V / T2V | 4-step LoRA, 720p resolution. Configured for 32GB. |
 | **LTX-2.3** | T2V / I2V / GGUF | BF16 workflows use either the dev model with the distilled 1.1 LoRA or the distilled checkpoint without LoRAs; 128GB is recommended. Q6_K GGUF copies provide the same two choices with lower memory use. |
-| **MiniMax-H3** | T2V / I2V / R2V / Turbo / GGUF / GGUF Turbo | Open-weight video generation with native stereo audio; separate Turbo, low-memory GGUF, and GGUF Turbo workflows are included. |
-| **Qwen Image** | T2I | Qwen Image 2512 in BF16, FP8, and GGUF Q4_K_M, with optional 4-step Lightning LoRA. |
-| **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 in BF16, FP8, and GGUF Q4_K_M, with 4/20-step workflows. |
+| **LTX Video 2.5 — Single Stage** | T2V / I2V | 22B distilled (int8-convrot), Gemma-4 text encoder, native audio. |
+| **LTX Video 2.5 — Two Stage** | T2V / I2V | As above plus a latent spatial upscaler for higher quality. |
+| **MiniMax-H3** | T2V / I2V / R2V / GGUF | Int8 diffusion model + NVFP4 text encoder; native stereo audio. Low-memory GGUF copies of all three are included. |
+| **MiniMax-H3 Turbo** | T2V / I2V / GGUF | Turbo LoRA, 4–8 sampling steps, with matching GGUF variants. |
+| **Qwen Image** | T2I | Qwen Image 2512 in BF16 and GGUF Q4_K_M, with optional 4-step Lightning LoRA. |
+| **Qwen Image Edit** | Image Editing | Qwen Image Edit 2511 in BF16 and GGUF Q4_K_M, with 4/20-step workflows. |
 | **Wan 2.2** | I2V / T2V | 14B model with 4-step Lightning LoRA. |
 
-The GGUF workflows use [`kyuz0/ComfyUI-GGUF-H3`](https://github.com/kyuz0/ComfyUI-GGUF-H3), based on `molbal/ComfyUI-GGUF` with support for Unsloth's metadata-free MiniMax-H3 text encoders. The Qwen GGUF downloader includes the matching Qwen2.5-VL text encoder and vision projector; the MiniMax-H3 downloader uses Unsloth's Q2 low-memory model pair; and LTX-2.3 uses Unsloth's Q6_K diffusion models with its matching Gemma encoder, connector, projector, and VAEs. These workflows are currently part of the development channel pending hardware validation.
+The GGUF workflows use [`kyuz0/ComfyUI-GGUF-H3`](https://github.com/kyuz0/ComfyUI-GGUF-H3), based on `molbal/ComfyUI-GGUF` with support for Unsloth's metadata-free MiniMax-H3 text encoders. The Qwen GGUF downloader includes the matching Qwen2.5-VL text encoder and vision projector; the MiniMax-H3 downloader uses Unsloth's Q2 low-memory model pair; and LTX-2.3 uses Unsloth's Q6_K diffusion models with its matching Gemma encoder, connector, projector, and VAEs.
 
-LTX-2.3 defaults to BF16 on Strix Halo because gfx1151 has native BF16 matrix support. FP8 checkpoints can load, but they are not downloaded or selected automatically; the Q6_K GGUF workflows are the bundled lower-memory alternative.
+> [!NOTE]
+> The two **LTX Video 2.5** entries are newly added and have not yet been
+> validated on this hardware. They also ship in UI format only, so they have no
+> benchmark coverage — see [§9.2](#92-adding-or-updating-workflows).
+
+> [!IMPORTANT]
+> **LTX Video 2.5 needs a Hugging Face login.** `Lightricks/LTX-2.5` is a gated
+> repository — every other model here downloads anonymously. Before using the
+> Model Manager for it: open
+> [the model page](https://huggingface.co/Lightricks/LTX-2.5), click **Agree and
+> access repository**, then run `hf auth login` inside the toolbox with a token
+> from [your HF settings](https://huggingface.co/settings/tokens). The
+> downloader checks for this and explains it rather than failing with a bare
+> HTTP 401.
 
 ---
 
@@ -67,22 +86,19 @@ The example below uses Toolbx and shares your home directory with the container.
 
 ### 2.1. Create the Toolbox
 
-Run the following command on your host to create the container with GPU access:
+Use the provided script to pull the latest image and create the toolbox with the correct GPU device flags:
 
 ```bash
-toolbox create strix-halo-comfyui \
-  --image docker.io/kyuz0/amd-strix-halo-comfyui:latest \
-  -- --device /dev/dri --device /dev/kfd \
-  --group-add video --group-add render --security-opt seccomp=unconfined
+./refresh-toolbox.sh
 ```
 
-*   `--device /dev/dri` & `/dev/kfd`: Exposes AMD GPU and compute devices.
-*   `--security-opt seccomp=unconfined`: Required for some ROCm/GPU operations.
+> [!WARNING]
+> If a toolbox named `amd-strix-halo-comfyui` already exists, this script will **delete and recreate** it. Any files stored *inside* the container (e.g., `/opt`, `/usr`) will be lost. **Files in your home directory (`~`) are safe.**
 
 ### 2.2. Enter the Toolbox
 
 ```bash
-toolbox enter strix-halo-comfyui
+toolbox enter amd-strix-halo-comfyui
 ```
 
 Once inside, you have access to a full ROCm environment with PyTorch, ComfyUI, and helper scripts in `/opt`.
@@ -91,7 +107,11 @@ Once inside, you have access to a full ROCm environment with PyTorch, ComfyUI, a
 > The included `start_comfy_ui` alias launches ComfyUI with `--bf16-vae`, `--disable-mmap`, and `--cache-none`.
 > *   **`--bf16-vae`**: Prevents OOM during VAE decoding.
 > *   **`--disable-mmap`**: **Critical for Strix Halo (gfx1151)**. Memory mapping above 64GB is currently very slow due to a ROCm issue; disabling it prevents performance degradation and hangs.
-> *   **`--cache-none`**: Disables model caching to manage unified memory more aggressively.
+> *   **`--cache-none`**: Disables model caching to manage the unified memory more aggressively (`GTT` vs `RAM`).
+> These flags live in `scripts/comfy_launch_args.sh` (installed as
+> `/etc/profile.d/02-comfy-launch-args.sh`), which is also what comfy-cli
+> replays when an agent launches ComfyUI through the Comfy MCP — so both paths
+> get the same tuning. Change them there, then run `setup_comfy_cli`.
 
 ### 2.3. Manual updates
 
@@ -113,32 +133,124 @@ You can run it interactively to select a channel, or pass the channel name as an
 
 ## 3. First Run Setup (Required)
 
-After entering the toolbox for the first time, you must configure the storage paths and download the model weights.
+After entering the toolbox for the first time, install the bundled workflows and download the model weights.
 
-### Step 1: Configure Persistent Paths
+### Step 1: Install Bundled Workflows
 
-Run the setup script to link ComfyUI's model directories to your home folder (`~/comfy-models`). This ensures you don't download 100GB+ of models every time you refresh the container.
+Copy the pre-validated workflows into your ComfyUI user directory:
 
 ```bash
-/opt/set_extra_paths.sh
+install_workflows
 ```
+
+This copies the UI-format workflow JSONs from `/opt/comfy-workflows/` to `~/comfy-ui/user/default/workflows/`. Re-run after any toolbox refresh to pick up new workflows.
+
+### Custom nodes
+
+Custom node packs are **not** baked into the image. ComfyUI runs with `--base-directory ~/comfy-ui`, and it resolves `custom_nodes` against that base — so packs installed under `/opt/ComfyUI/custom_nodes` would never be scanned. They are cloned into `~/comfy-ui/custom_nodes/` instead, where they also survive a toolbox rebuild.
+
+`start_comfy_ui` does this for you; the first launch clones the packs and installs each one's `requirements.txt` into the venv, and later launches skip the work. To manage them by hand:
+
+```bash
+install_custom_nodes          # clone anything missing, ensure dependencies
+update_custom_nodes           # also fast-forward existing clones
+/opt/install_custom_nodes.sh list   # show packs and their state
+```
+
+The venv is reset whenever the toolbox is recreated, so dependencies are reinstalled on the next launch even though the clones in your home directory persist. Adding a pack means adding its URL to `REPOS` in `scripts/install_custom_nodes.sh`. A directory you create yourself under `~/comfy-ui/custom_nodes/` is never touched.
+
+> [!NOTE]
+> The first launch needs network access. If a clone fails, `start_comfy_ui` reports it and starts ComfyUI anyway — with those nodes missing.
 
 ### Step 2: Download Models
 
 Use the **Model Manager TUI** to download the required checkpoints and LoRAs for the included workflows. This tool handles the complex dependency chains (e.g., downloading base models before LoRAs).
 
 ```bash
-model_manager
+python /opt/model_manager.py
 ```
-*(Or `python /opt/model_manager.py`)*
 
-Select the workflow you want to run (e.g., "Wan 2.2 - Text to Video"), and the manager will download the necessary files to `~/comfy-models`.
+Select the workflow you want to run (e.g., "Wan 2.2 - Text to Video"), and the manager will download the necessary files to `~/comfy-ui/models`.
 
-> **Note:** The manager uses the helper scripts located in `/opt/` (like `get_qwen_image.sh`, `get_wan22.sh`) under the hood. You can run these manually if you prefer CLI arguments.
+> **Note:** The manager calls the helper scripts in `/opt/` (e.g. `get_qwen_image.sh`, `get_wan22.sh`) under the hood. You can run these directly if you prefer CLI arguments.
 
 ---
 
-## 4. Benchmarks
+## 4. Agent Access (Comfy MCP)
+
+[Comfy MCP](https://blog.comfy.org/p/open-sourcing-comfy-mcp-on-local) lets an AI agent such as [opencode](https://opencode.ai) drive this toolbox's ComfyUI: build and validate workflows, run them and collect the outputs, search the installed nodes and the models on disk, and read the GPU it is running on.
+
+The server ships in the image. It is a **stdio** server, so your agent spawns it as a subprocess — and because ComfyUI, comfy-cli, the venv and your models all live inside the container, the server has to run there too. `scripts/comfy-mcp-host.sh` does that with `toolbox run`.
+
+### 4.1 Register it
+
+opencode has no `mcp add` command — add the server to `~/.config/opencode/opencode.json` by hand. (An `opencode.json` in a project directory works too, if you would rather register it per project than globally.)
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "comfy-mcp": {
+      "type": "local",
+      "command": ["/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh"],
+      "enabled": true
+    }
+  }
+}
+```
+
+Three things differ from most MCP documentation you will find, and all three are easy to carry over wrongly:
+
+* the key is **`mcp`**, not `mcpServers`
+* **`command` is an array**, not a string
+* the environment key is **`environment`**, not `env`
+
+If you already have an `opencode.json` — most people do, with `model` and `provider` in it — add the `mcp` key alongside those rather than replacing the file.
+
+No `environment` block is needed for a default setup. ComfyUI serves on comfy-cli's default `127.0.0.1:8188`, and the image already puts the venv first on `PATH`.
+
+If you renamed your container, set `COMFY_TOOLBOX` rather than editing the script:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "comfy-mcp": {
+      "type": "local",
+      "command": ["/path/to/amd-strix-halo-comfyui-toolboxes/scripts/comfy-mcp-host.sh"],
+      "enabled": true,
+      "environment": { "COMFY_TOOLBOX": "my-container-name" }
+    }
+  }
+}
+```
+
+### 4.2 Using it
+
+Start ComfyUI with `start_comfy_ui` in the toolbox first, or let the agent call `launch_comfyui`. Either path produces the same instance: the flags live in one place (`scripts/comfy_launch_args.sh`) that both the alias and comfy-cli read. Ask the agent to call `server_info` to confirm it can see the GPU.
+
+To re-register comfy-cli by hand after changing those flags:
+
+```bash
+setup_comfy_cli
+```
+
+### 4.3 The built-in node manager
+
+ComfyUI-Manager is now part of ComfyUI core rather than a custom node, and this toolbox enables it (`--enable-manager`). You get the **Manager** button in the ComfyUI sidebar for searching and installing node packs.
+
+> [!WARNING]
+> Manager — and the MCP's `install_node` — install **third-party code that this toolbox does not curate and has not validated on gfx1151**. The image sets `PIP_CONSTRAINT` so those installs cannot replace the pinned ROCm PyTorch, but a pack can still fail to load, pull a heavy dependency, or conflict with another pack. The six bundled packs in `scripts/install_custom_nodes.sh` remain the supported set; if an install breaks something, `./refresh-toolbox.sh` is the recovery path.
+
+> [!WARNING]
+> **Agent-side model and node paths are not yet verified.** comfy-cli has no equivalent of ComfyUI's `--base-directory`. `setup_comfy_cli` registers `/opt/ComfyUI` as the workspace, but the running server reads models and custom nodes from `~/comfy-ui`. Agent tools that resolve paths through comfy-cli rather than through ComfyUI's HTTP API — `install_node`, `search_models`, `download_model` — may act on the wrong directory and appear to succeed while the server never sees the result. Until this is confirmed on hardware, prefer `model_manager` and `install_custom_nodes` for anything you need to actually load, and treat the agent's model list as advisory. The same uncertainty applies to packs installed through the Manager UI.
+
+> [!IMPORTANT]
+> **ComfyUI moved from port 8000 to 8188** so it matches what comfy-cli and comfy-mcp expect. Update any `ssh -L 8000:localhost:8000` tunnel to `ssh -L 8188:localhost:8188`, and any bookmark to `http://localhost:8188`. The banner prints the current port and SSH tip every time you enter the toolbox.
+
+---
+
+## 5. Benchmarks
 
 We maintain a list of performance benchmarks for these workflows on the AMD Ryzen AI Max “Strix Halo”.
 
@@ -151,7 +263,7 @@ python /opt/benchmark_workflows.py
 
 ---
 
-## 5. Kernel Log Collection
+## 6. Kernel Log Collection
 
 We are working directly with AMD to improve kernel stability and performance for the Strix Halo (gfx1151). If you encounter performance issues or crashes, you can help by collecting execution logs.
 
@@ -175,7 +287,7 @@ Please zip the `perf_logs` folder and attach it to the GitHub issue mentioned ab
 
 ---
 
-## 6. Maintainer Notes
+## 7. Maintainer Notes
 
 ### Publishing Log Releases
 
@@ -192,3 +304,121 @@ To publish collected performance logs as a GitHub Release (for tracking historic
       --title "Performance Logs $(date +%Y-%m-%d)" \
       --notes "Logs collected on Strix Halo for kernel analysis."
     ```
+
+---
+
+## 8. Host Configuration
+
+This should work on any Strix Halo. For a complete list of available hardware, see: [Strix Halo Hardware Database](https://strixhalo-homelab.d7.wtf/Hardware)
+
+### 8.1 Test Configuration
+
+|                    |                                               |
+| ------------------ | --------------------------------------------- |
+| **Test Machine**   | Framework Desktop                             |
+| **CPU**            | Ryzen AI MAX+ 395 "Strix Halo"                |
+| **System Memory**  | 128 GB RAM                                    |
+| **GPU Memory**     | 512 MB allocated in BIOS                      |
+| **Host OS**        | Fedora 43                                     |
+| **Host OS**        | 6.18.4-100.fc43.x86\_64                       |
+| **Linux firmware** | 20251111                                      |
+
+### 8.2 Kernel Parameters
+
+Add these boot parameters to enable unified memory while reserving a minimum of 4 GiB for the OS (max 128 GiB for iGPU):
+
+| Parameter                    | Purpose                                                                                     |
+|------------------------------|---------------------------------------------------------------------------------------------|
+| `amd_iommu=off`              | Disables IOMMU for lower latency                                                            |
+| `amdgpu.gttsize=126976`      | Caps GPU unified memory to 124 GiB; 126976 MiB ÷ 1024 = 124 GiB                            |
+| `ttm.pages_limit=32505856`   | Caps pinned memory to 124 GiB; 32505856 × 4 KiB = 126976 MiB = 124 GiB                     |
+
+Source: [Framework Community — AMD Strix Halo llama.cpp installation guide for Fedora 42](https://community.frame.work/t/amd-strix-halo-llama-cpp-installation-guide-for-fedora-42/75856#p-297775-h-11-add-kernel-parameters-using-grubby-4)
+
+**Apply the changes (Fedora):**
+
+```bash
+sudo grubby --update-kernel=ALL --args='amd_iommu=off amdgpu.gttsize=126976 ttm.pages_limit=32505856'
+sudo reboot
+```
+
+---
+
+## 9. Development Guide
+
+This section covers how to build and test changes to this toolbox locally, and how to add or update workflows.
+
+### 9.1. Building and Testing the Image Locally
+
+The `refresh-toolbox.sh` script supports a `--local` flag that builds the `Dockerfile` from your local checkout instead of pulling from the registry. Use this when iterating on the image (e.g., adding packages, changing scripts):
+
+```bash
+./refresh-toolbox.sh --local
+```
+
+This will:
+1. Run `podman build` against the `Dockerfile` in the repo root and tag the result as the production image name.
+2. Delete the existing `amd-strix-halo-comfyui` toolbox (if present).
+3. Recreate it from the freshly-built local image with the correct GPU device flags.
+
+After it completes, enter the toolbox as usual to test your changes:
+
+```bash
+toolbox enter amd-strix-halo-comfyui
+```
+
+> [!WARNING]
+> Like a normal refresh, `--local` will **delete and recreate** the toolbox container. Files inside the container (e.g., `/opt`, `/usr`) will be reset. Your home directory is safe.
+
+#### Refreshing the bundled sources
+
+ComfyUI and both studios are `git clone --depth=1`d during the build. Podman caches those layers on a command string that never changes, so a local build keeps whatever it first cloned — indefinitely. A months-old ComfyUI shows up as missing-node errors when you load a workflow that needs a recent one. (Custom node packs are exempt: they are cloned at runtime by `install_custom_nodes`, so `update_custom_nodes` refreshes those instead.)
+
+To re-clone them all:
+
+```bash
+./refresh-toolbox.sh --local --refresh-sources
+```
+
+This rebuilds every layer below the refresh barrier — the clones and the pip installs that follow them — but not the ROCm/PyTorch install above it, so it is much cheaper than `--no-cache`. The banner reports how old the bundled sources are and reminds you once they pass two weeks:
+
+```
+Sources: 2026-06-15 (73d old — refresh: ./refresh-toolbox.sh --local --refresh-sources)
+```
+
+The flag only affects `--local` builds; published images are built with `no-cache: true` in CI, so their sources are always current.
+
+> [!NOTE]
+> When adding a new `git clone` to the `Dockerfile`, put it **below** the source refresh barrier — anything above it is exempt from `--refresh-sources` and will silently go stale. `tests/test-dockerfile-wiring.sh` checks this.
+
+### 9.2. Adding or Updating Workflows
+
+Workflows are stored in two formats, both required:
+
+| Directory | Format | Purpose |
+| :--- | :--- | :--- |
+| `workflows/` | **UI format** | Human-readable; load directly in the ComfyUI browser interface. |
+| `workflows/API/` | **API format** | Minimal JSON used by the benchmark and log-collection scripts. |
+
+Both files should share the same base filename (e.g., `My-Workflow.json`).
+
+> [!NOTE]
+> The five `MiniMax-H3-*.json` workflows currently ship in UI format only.
+> Their API-format exports are pending hardware validation, so MiniMax-H3
+> has no benchmark or perf-log coverage yet.
+
+#### Exporting from the ComfyUI UI
+
+1. Design and validate your workflow in the ComfyUI browser interface.
+2. Export the **UI format**: `Menu → Save (workflow)` — save as `workflows/<workflow-name>.json`.
+3. Export the **API format**: `Menu → Save (API format)` — save as `workflows/API/<workflow-name>.json`.
+
+> [!NOTE]
+> The "Save (API format)" option is only visible when **Dev Mode** is enabled in ComfyUI settings (`Settings → Enable Dev Mode Options`).
+
+#### Checklist for new workflows
+
+- [ ] Both `workflows/<name>.json` and `workflows/API/<name>.json` are committed.
+- [ ] The workflow has been validated end-to-end on Strix Halo hardware.
+- [ ] Required models are listed in the workflow table in [Section 1](#1-included-workflows).
+- [ ] Any new model download scripts or `model_manager` entries are updated accordingly.
