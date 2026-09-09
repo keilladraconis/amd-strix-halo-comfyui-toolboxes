@@ -25,6 +25,8 @@ COPY scripts/benchmark_workflows.py /opt/
 COPY scripts/collect_perf_logs.py /opt/
 COPY scripts/model_manager.py /opt/
 COPY --chmod=755 scripts/install_workflows.sh /opt/
+COPY --chmod=755 scripts/install_custom_nodes.sh /opt/
+COPY --chmod=755 scripts/setup_comfy_cli.sh /opt/
 RUN chmod 0755 /opt/model_manager.py && ln -s /opt/model_manager.py /opt/venv/bin/model_manager
 COPY workflows/API /opt/comfy-workflows
 
@@ -56,6 +58,64 @@ RUN git clone --depth=1 https://github.com/kyuz0/ComfyUI-AMDGPUMonitor /opt/Comf
 RUN git clone --depth=1 https://github.com/kyuz0/ComfyUI-GGUF-H3 /opt/ComfyUI/custom_nodes/ComfyUI-GGUF && \
     python -m pip install -r /opt/ComfyUI/custom_nodes/ComfyUI-GGUF/requirements.txt
 RUN git clone --depth=1 https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo /opt/ComfyUI/custom_nodes/ComfyUI-MiniMax-H3-Turbo
+
+# ── Constraints: pin what the image curates ───────────────────────────────────
+# huggingface_hub is on this list because the `hf` CLI it provides is what every
+# get_*.sh downloader runs. ComfyUI-LTXVideo asks for huggingface_hub>=0.25.2,
+# which unconstrained resolved to 1.29.0 and broke every model download.
+RUN /opt/venv/bin/python - <<'PY' > /opt/venv/image-constraints.txt
+import importlib.metadata as md
+for pkg in ("torch", "torchvision", "torchaudio", "numpy",
+            "transformers", "pillow", "huggingface_hub"):
+    try:
+        print(f"{pkg}=={md.version(pkg)}")
+    except md.PackageNotFoundError:
+        pass
+PY
+
+# Promote the constraints file from an install_custom_nodes.sh detail to a
+# container-wide invariant. Enabling ComfyUI-Manager and shipping the Comfy MCP
+# both open install paths this image does not curate: the Manager UI,
+# comfy-mcp's install_node, and its update_comfyui(target="comfy") -- which
+# re-runs ComfyUI's own requirements.txt, and that file lists a bare `torch`.
+# Any of them would otherwise swap the ROCm nightly for a generic PyPI wheel and
+# take gfx1151 support with it. A user typing `pip install -U torch` is covered
+# by the same env var.
+#
+# pip's --constraint is an append option, so install_custom_nodes.sh's explicit
+# `-c` still stacks its own kornia pin on top rather than replacing these.
+# UV_CONSTRAINT covers the same ground for comfy-cli and comfyui-manager, which
+# both use uv for some installs.
+ENV PIP_CONSTRAINT=/opt/venv/image-constraints.txt
+ENV UV_CONSTRAINT=/opt/venv/image-constraints.txt
+
+# comfy-cli's telemetry clients (mixpanel, posthog) honour both of these, and
+# comfy-cli already defaults to no tracking when non-interactive. Setting them
+# explicitly also guarantees the first-run consent prompt can never appear: on
+# the Comfy MCP path stdout is the JSON-RPC transport, and a rich prompt written
+# there would corrupt the stream.
+ENV DO_NOT_TRACK=1
+ENV COMFY_NO_TELEMETRY=1
+
+# ComfyUI-Manager is in core now, but a git-clone install has to opt in: core
+# keeps it out of requirements.txt and ships it in manager_requirements.txt,
+# enabled with --enable-manager (see scripts/comfy_launch_args.sh). Taken from
+# core's own file so its version tracks core rather than a stale hand-written
+# pin. This is deliberately below the constraints ENV above: comfyui_manager
+# depends on unpinned transformers and huggingface-hub>0.20, which is precisely
+# what the constraints file exists to hold still.
+#
+# Manager does not replace scripts/install_custom_nodes.sh. The bundled packs
+# are what the shipped workflows require, and Manager installs pack
+# requirements with no constraints of its own -- it is here for packs the USER
+# chooses to add.
+RUN python -m pip install -r /opt/ComfyUI/manager_requirements.txt
+
+# comfy-cli is the engine the Comfy MCP shells out to for everything; comfy-mcp
+# is the stdio server itself, launched from the host by
+# scripts/comfy-mcp-host.sh. Both resolve by bare name because ENV PATH already
+# puts /opt/venv/bin first.
+RUN python -m pip install "comfy-cli>=1.20" comfy-mcp
 
 # Permissions & trims (keep compilers/headers and installed shared libraries intact)
 RUN chmod -R a+rwX /opt && chmod +x /opt/*.sh || true && \
