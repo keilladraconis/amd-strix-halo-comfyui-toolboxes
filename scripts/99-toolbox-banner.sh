@@ -57,9 +57,40 @@ except Exception:
 PY
 }
 
+# Date the bundled sources (ComfyUI and the studios) were last
+# cloned. Written by the Dockerfile's refresh barrier and frozen with the layer
+# cache, so it reports the real age of the clones, not of the build.
+sources_line() {
+  local refreshed age
+  [[ -r /etc/toolbox-sources ]] || return
+  refreshed=$(sed -n 's/^refreshed=//p' /etc/toolbox-sources)
+  [[ -n "$refreshed" ]] || return
+  age=$(( ( $(date -u +%s) - $(date -u -d "$refreshed" +%s 2>/dev/null || echo 0) ) / 86400 ))
+  if (( age >= 14 )); then
+    printf 'Sources: %s (%sd old — refresh: ./refresh-toolbox.sh --local --refresh-sources)\n' \
+      "$refreshed" "$age"
+  else
+    printf 'Sources: %s\n' "$refreshed"
+  fi
+}
+
+# Everything below writes to stdout, and stdout is the Comfy MCP's JSON-RPC
+# transport: scripts/comfy-mcp-host.sh runs `sh -lc`, a login shell, which
+# sources this file. Fedora's /etc/profile happens to source profile.d with
+# >/dev/null when non-interactive, which is the only reason a stray banner has
+# never corrupted the protocol stream. Do not rely on that — bail out
+# explicitly. Aliases below are not expanded in a non-interactive shell anyway,
+# and comfy_launch_args() lives in 02-comfy-launch-args.sh, so nothing the MCP
+# path needs is lost by returning here.
+case $- in
+  *i*) ;;
+  *) return 0 ;;
+esac
+
 MACHINE="$(oem_info)"
 GPU="$(gpu_name)"
 ROCM_VER="$(rocm_version)"
+SOURCES="$(sources_line)"
 
 echo
 cat <<'ASCII'
@@ -76,16 +107,33 @@ ASCII
 echo
 printf 'AMD Ryzen AI Max “Strix Halo” — Image & Video Toolbox (gfx1151, ROCm via TheRock)\n'
 [[ -n "$ROCM_VER" ]] && printf 'ROCm nightly: %s\n' "$ROCM_VER"
+[[ -n "$SOURCES" ]] && printf '%s\n' "$SOURCES"
 echo
 printf 'Machine: %s\n' "$MACHINE"
 printf 'GPU    : %s\n\n' "$GPU"
 printf 'Repo   : https://github.com/kyuz0/amd-strix-halo-comfyui-toolboxes\n'
 printf 'Image  : docker.io/kyuz0/amd-strix-halo-comfyui:latest\n\n'
 printf 'Included:\n'
-printf '  - %-16s → %s\n' "ComfyUI"            "start_comfy_ui (http://localhost:8000)"
-printf '  - %-16s → %s\n' "Model Manager"      "model_manager"
+printf '  - %-16s → %s\n' "ComfyUI"            "start_comfy_ui (http://localhost:8188)"
+printf '  - %-16s → %s\n' "Install Workflows"  "install_workflows  (copy bundled workflows to ~/comfy-ui)"
+printf '  - %-16s → %s\n' "Custom Nodes"       "install_custom_nodes / update_custom_nodes"
+printf '  - %-16s → %s\n' "Model Manager"  "model_manager (select and install models for workflows)"
+printf '  - %-16s → %s\n' "Node Manager"       "built into ComfyUI — Manager button in the sidebar"
+printf '  - %-16s → %s\n' "Comfy MCP"          "setup_comfy_cli (agent access — see README §4)"
+
 echo
-printf 'SSH tip: ssh -L 8000:localhost:8000 user@host\n\n'
+printf 'SSH tip: ssh -L 8188:localhost:8188 user@host\n\n'
 
 # Aliases
-alias start_comfy_ui='cd /opt/ComfyUI && python main.py --port 8000 --output-directory $HOME/comfy-outputs --disable-mmap --gpu-only --disable-smart-memory --cache-none --bf16-vae'
+# Custom node packs and bundled workflows both live in the ComfyUI base
+# directory, not in the image — see /opt/install_custom_nodes.sh and
+# /opt/install_workflows.sh. Installing both before launch means a fresh toolbox
+# can never start with an empty custom_nodes or workflows directory. Workflows
+# use --if-needed so saved edits are not overwritten on every launch. A failure
+# (no network, say) is reported but must not stop ComfyUI from starting.
+alias start_comfy_ui='/opt/install_workflows.sh --if-needed; /opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; /opt/setup_comfy_cli.sh >/dev/null || echo "⚠ comfy-cli not registered — the Comfy MCP may launch ComfyUI untuned."; cd /opt/ComfyUI && python main.py $(comfy_launch_args)'
+alias setup_comfy_cli='/opt/setup_comfy_cli.sh'
+alias install_custom_nodes='/opt/install_custom_nodes.sh'
+alias update_custom_nodes='/opt/install_custom_nodes.sh update'
+alias install_workflows='/opt/install_workflows.sh'
+alias model_manager='python /opt/model_manager.py'

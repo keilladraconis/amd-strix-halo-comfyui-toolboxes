@@ -155,7 +155,7 @@ def main():
     parser = argparse.ArgumentParser(description="Benchmark ComfyUI Workflows")
     parser.add_argument("--workflow-dir", default="/opt/comfy-workflows", help="Directory containing API-format workflow JSON files")
     parser.add_argument("--comfy-dir", default="/opt/ComfyUI", help="ComfyUI installation directory")
-    parser.add_argument("--server", default="localhost:8000", help="Address of ComfyUI server (host:port)") 
+    parser.add_argument("--server", default="localhost:8188", help="Address of ComfyUI server (host:port)") 
     parser.add_argument("--output", default="benchmark_results.json", help="Output JSON file for results")
     parser.add_argument("--skip-errors", action="store_true", help="Continue regular execution if a workflow fails")
     parser.add_argument("--warm-start", action="store_true", help="Run a second 'warm start' execution for each workflow")
@@ -222,7 +222,7 @@ def main():
                 shutil.rmtree(miopen_dir)
             
             # 2. Start Server
-            comfy_outputs_dir = os.path.join(home_dir, "comfy-outputs")
+            comfy_outputs_dir = os.path.join(home_dir, "comfy-ui/output")
             comfy_cmd = [
                 sys.executable, "main.py",
                 "--port", server_port,

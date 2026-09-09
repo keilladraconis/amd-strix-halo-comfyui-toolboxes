@@ -24,6 +24,7 @@ COPY scripts/get_minimax_h3.sh /opt/
 COPY scripts/benchmark_workflows.py /opt/
 COPY scripts/collect_perf_logs.py /opt/
 COPY scripts/model_manager.py /opt/
+COPY --chmod=755 scripts/install_workflows.sh /opt/
 RUN chmod 0755 /opt/model_manager.py && ln -s /opt/model_manager.py /opt/venv/bin/model_manager
 COPY workflows/API /opt/comfy-workflows
 
@@ -67,6 +68,10 @@ RUN python -c 'import torch; print(torch.__version__)'
 
 # Enable torch TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL
 COPY scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
+
+# Single source of truth for ComfyUI's launch flags. Sourced before the banner,
+# which defines the start_comfy_ui alias that calls comfy_launch_args().
+COPY --chmod=0644 scripts/comfy_launch_args.sh /etc/profile.d/02-comfy-launch-args.sh
 
 # Banner script (runs on login). Use a high sort key so it runs after venv.sh and 01-rocm-env...
 COPY scripts/99-toolbox-banner.sh /etc/profile.d/99-toolbox-banner.sh
