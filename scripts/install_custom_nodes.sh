@@ -41,7 +41,15 @@ NODE_PINS=(
 REPOS=(
   https://github.com/cubiq/ComfyUI_essentials
   https://github.com/kyuz0/ComfyUI-AMDGPUMonitor
-  https://github.com/city96/ComfyUI-GGUF
+  # kyuz0's fork of city96/ComfyUI-GGUF, via molbal/ComfyUI-GGUF: it adds
+  # support for Unsloth's metadata-free MiniMax-H3 text encoders, which the
+  # bundled H3 GGUF workflows load. city96's original cannot read them.
+  #
+  # This installs as ComfyUI-GGUF-H3, a different directory from the
+  # ComfyUI-GGUF that earlier versions cloned. If you have that older directory
+  # in $HOME/comfy-ui/custom_nodes, delete it: both register the same node
+  # classes, and ComfyUI will load whichever it scans first.
+  https://github.com/kyuz0/ComfyUI-GGUF-H3
   https://github.com/Lightricks/ComfyUI-LTXVideo
   https://github.com/evanspearman/ComfyMath
   https://github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo

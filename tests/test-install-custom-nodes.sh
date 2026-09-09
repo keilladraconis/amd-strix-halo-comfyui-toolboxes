@@ -72,7 +72,7 @@ run() {
   PIPS="$(grep -c 'pip install' "$env/pip.log" 2>/dev/null)"
 }
 
-EXPECTED="ComfyMath ComfyUI-AMDGPUMonitor ComfyUI-GGUF ComfyUI-LTXVideo ComfyUI-MiniMax-H3-Turbo ComfyUI_essentials "
+EXPECTED="ComfyMath ComfyUI-AMDGPUMonitor ComfyUI-GGUF-H3 ComfyUI-LTXVideo ComfyUI-MiniMax-H3-Turbo ComfyUI_essentials "
 
 # --- fresh install -----------------------------------------------------------
 E="$(new_env)"
