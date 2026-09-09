@@ -33,9 +33,23 @@ COPY workflows/API /opt/comfy-workflows
 
 
 # ROCm + PyTorch (TheRock multi-arch release, scoped to Strix Halo gfx1151)
+#
+# Defaults to the latest nightly. Some nightlies are broken on gfx1151 (e.g.
+# 2026-06-12 / rocm7.14.0a20260612 segfaults: rocminfo and torch.cuda init both
+# dump core). To pin a known-good build: run ./find-good-nightly.sh, which
+# writes nightly-overrides.conf; ./refresh-toolbox.sh --local then passes it
+# here as --build-arg. Empty arg => unpinned latest.
+#
+# The [device-gfx1151] extra is what selects the GPU under multi-arch and must
+# survive pinning, so it stays outside the version substitution.
+ARG TORCH_VERSION=
+ARG TORCHAUDIO_VERSION=
+ARG TORCHVISION_VERSION=
 RUN python -m pip install \
     --index-url https://rocm.nightlies.amd.com/whl-multi-arch/ \
-    --pre "torch[device-gfx1151]" "torchvision[device-gfx1151]" torchaudio
+    --pre "torch[device-gfx1151]${TORCH_VERSION:+==$TORCH_VERSION}" \
+          "torchvision[device-gfx1151]${TORCHVISION_VERSION:+==$TORCHVISION_VERSION}" \
+          "torchaudio${TORCHAUDIO_VERSION:+==$TORCHAUDIO_VERSION}"
 
 WORKDIR /opt
 

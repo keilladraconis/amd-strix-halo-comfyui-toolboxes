@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
-set -e
-
-TOOLBOX_NAME="amd-strix-halo-comfyui"
-IMAGE_REPO="docker.io/kyuz0/amd-strix-halo-comfyui"
+NAME="amd-strix-halo-comfyui"
+IMAGE="docker.io/kyuz0/amd-strix-halo-comfyui:latest"
+REPO="${IMAGE%:*}"  # docker.io/kyuz0/amd-strix-halo-comfyui
+CHANNEL="${CHANNEL:-latest}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # --- Channel selection (latest / dev) ---
 resolve_channel() {
@@ -37,7 +38,85 @@ resolve_channel() {
     esac
 }
 
-CHANNEL="$(resolve_channel "${1:-}")"
+# Parse args
+VALID_ARGS=$(getopt -o lc: --long local,channel:,refresh-sources -- "$@")
+
+eval set -- "$VALID_ARGS"
+while [ : ]; do
+    case "$1" in
+        -l | --local)
+            LOCAL=1
+            shift
+            ;;
+        --refresh-sources)
+            REFRESH_SOURCES=1
+            shift
+            ;;
+        -c | --channel)
+            CHANNEL="$(resolve_channel "${2:-}")"
+            shift
+            ;;
+        --) shift ;
+            break
+            ;;
+    esac
+done
+
+TOOLBOX_ARGS=(
+  -- --device /dev/dri --device /dev/kfd
+     --group-add video --group-add render
+     --security-opt seccomp=unconfined
+)
+
+OVERRIDES_FILE="${OVERRIDES_FILE:-$SCRIPT_DIR/nightly-overrides.conf}"
+
+if [[ "$LOCAL" == "1" ]]; then
+  # Apply a pinned-nightly override written by find-good-nightly.sh, if present.
+  # Each non-comment KEY=VALUE line becomes a --build-arg.
+  BUILD_ARGS=()
+  if [[ -f "$OVERRIDES_FILE" ]]; then
+    echo "Applying nightly overrides from $OVERRIDES_FILE:"
+    while IFS= read -r line; do
+      [[ "$line" =~ ^[[:space:]]*# ]] && continue
+      [[ -z "${line// }" ]] && continue
+      echo "  $line"
+      BUILD_ARGS+=(--build-arg "$line")
+    done < "$OVERRIDES_FILE"
+  fi
+
+  # The Dockerfile's `git clone --depth=1` layers are cached on a command string
+  # that never changes, so ComfyUI and the studios stay
+  # frozen at whatever was first cloned. Bumping SOURCES_EPOCH busts the refresh
+  # barrier and re-clones them all. Everything below the barrier rebuilds too;
+  # the ROCm/PyTorch install sits above it and is preserved.
+  if [[ "${REFRESH_SOURCES:-0}" == "1" ]]; then
+    echo "Refreshing sources: re-cloning ComfyUI and the studios."
+    BUILD_ARGS+=(--build-arg "SOURCES_EPOCH=$(date +%s)")
+  fi
+
+  echo "Building local image from $SCRIPT_DIR/Dockerfile ..."
+  podman build "${BUILD_ARGS[@]}" -t "$IMAGE" "$SCRIPT_DIR"
+
+  echo "Recreating toolbox $NAME from local build ..."
+  toolbox rm -f "$NAME" 2>/dev/null || true
+  toolbox create "$NAME" --image "$IMAGE" "${TOOLBOX_ARGS[@]}"
+
+  echo "Done."
+  exit 0
+fi
+
+if [[ -f "$OVERRIDES_FILE" ]]; then
+  echo "Note: $OVERRIDES_FILE exists but only applies to --local builds;" >&2
+  echo "      this pull path uses the prebuilt image as-is." >&2
+fi
+
+if [[ "${REFRESH_SOURCES:-0}" == "1" ]]; then
+  echo "Note: --refresh-sources only applies to --local builds; published images" >&2
+  echo "      are built with no-cache, so their sources are already current." >&2
+fi
+
+TOOLBOX_NAME="amd-strix-halo-comfyui"
+IMAGE_REPO="docker.io/kyuz0/amd-strix-halo-comfyui"
 IMAGE="${IMAGE_REPO}:${CHANNEL}"
 
 # Base options
@@ -82,6 +161,10 @@ if command -v skopeo &>/dev/null && command -v jq &>/dev/null; then
 fi
 
 echo "🔄 Refreshing $TOOLBOX_NAME via $MANAGER (channel: $CHANNEL, image: $IMAGE)"
+toolbox rm -f "$NAME" 2>/dev/null || true
+toolbox create "$NAME" \
+  --image "$IMAGE" \
+  "${TOOLBOX_ARGS[@]}"
 
 # Remove existing container if it exists
 if $MANAGER list 2>/dev/null | grep -q "$TOOLBOX_NAME"; then
