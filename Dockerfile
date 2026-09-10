@@ -17,6 +17,11 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 ENV PIP_NO_CACHE_DIR=1
 RUN printf 'source /opt/venv/bin/activate\n' > /etc/profile.d/venv.sh
+# NOTE: the pre-re-found fork set include-system-site-packages=true here (added
+# in "Use the comfy ui base director", with no stated reason). Deliberately not
+# carried: it lets dnf-installed Python shadow the venv's pinned set, which is
+# precisely what PIP_CONSTRAINT/UV_CONSTRAINT below exist to prevent. The image
+# builds and runs without it. Restore only with a concrete failing case.
 RUN python -m pip install --upgrade pip setuptools wheel
 
 # ── 3. ROCm + PyTorch (TheRock multi-arch release, scoped to gfx1151) ─────────
