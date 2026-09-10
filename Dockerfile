@@ -64,6 +64,13 @@ RUN python -m pip install -r requirements.txt && \
     python -m pip install --prefer-binary \
     pillow opencv-python-headless imageio imageio-ffmpeg scipy "huggingface_hub>=1.5,<2.0" pyyaml websocket-client
 
+# gguf is a dependency of the ComfyUI-GGUF pack, which is no longer baked into
+# the image (see below). The pack's own requirements.txt used to install it as a
+# side effect of the clone; with the clone gone, nothing did, and every GGUF
+# workflow failed at import with "No module named 'gguf'". Installed explicitly
+# here so it does not depend on which packs happen to be present.
+RUN python -m pip install gguf
+
 # Custom node packs are deliberately NOT baked in. ComfyUI runs with
 # --base-directory $HOME/comfy-ui (see scripts/comfy_launch_args.sh), so it
 # scans $HOME/comfy-ui/custom_nodes and never looks at /opt/ComfyUI/custom_nodes

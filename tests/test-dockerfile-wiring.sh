@@ -27,6 +27,11 @@ check "every scripts/get_*.sh is copied into the image" "" "${missing[*]-}"
 check "the MiniMax-H3 Turbo custom node is in the installer manifest" "0" \
   "$(grep -qF 'github.com/Larryvrh/ComfyUI-MiniMax-H3-Turbo' scripts/install_custom_nodes.sh; echo $?)"
 
+# Removing the baked packs also removed the pip install of their requirements.
+# gguf came in that way; without it every GGUF workflow dies at import.
+check "gguf is installed independently of the custom node packs" "0" \
+  "$(grep -qE '^RUN python -m pip install gguf' Dockerfile; echo $?)"
+
 # Baking packs into the image is what broke them: ComfyUI would not scan there.
 check "no custom node packs are cloned into the image" "" \
   "$(grep -nE '^RUN git clone.*ComfyUI[-_]' Dockerfile)"
