@@ -245,5 +245,15 @@ check "the banner advertises the built-in node manager" "0" \
   "$(grep -qF 'Node Manager' scripts/99-toolbox-banner.sh; echo $?)"
 
 echo
+# Downloaders must write where ComfyUI actually looks. With
+# --base-directory $HOME/comfy-ui that is $HOME/comfy-ui/models; the older
+# $HOME/comfy-models layout is only visible after set_extra_paths.sh runs, so a
+# downloader pointing there silently fetches tens of GB into a directory
+# ComfyUI never scans.
+check "no downloader writes to the pre-base-directory model root" "" \
+  "$(grep -ln 'MODEL_HOME="\$HOME/comfy-models"' scripts/get_*.sh)"
+check "every downloader resolves MODEL_HOME under comfy-ui/models" "" \
+  "$(grep -L 'MODEL_HOME:-\$HOME/comfy-ui/models' scripts/get_*.sh)"
+
 echo "$PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]

@@ -6,7 +6,10 @@ export HF_XET_HIGH_PERFORMANCE="${HF_XET_HIGH_PERFORMANCE:-1}"
 export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 HF="/opt/venv/bin/hf"
 
-MODEL_HOME="$HOME/comfy-models"
+# ComfyUI runs with --base-directory $HOME/comfy-ui, so models live under
+# $HOME/comfy-ui/models. $HOME/comfy-models is the pre-base-directory layout
+# and is NOT scanned unless set_extra_paths.sh has been run.
+MODEL_HOME="${MODEL_HOME:-$HOME/comfy-ui/models}"
 STAGE="$MODEL_HOME/.hf_stage_minimax_h3"
 REPO="Comfy-Org/MiniMax-H3"
 TURBO_REPO="larryvrh/MiniMax-H3-Turbo-Lora"

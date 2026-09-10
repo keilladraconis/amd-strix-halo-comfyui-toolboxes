@@ -238,6 +238,23 @@ MODEL_FAMILIES = [
         ]
     },
 
+    # --- Utility models (not a generation family) ---
+    {
+        # SAM 3.1 backs the reference-plate detailer pass: SAM3_Detect segments
+        # "eyes"/"hands" from a text prompt, and the bbox it returns drives a
+        # crop-resample-composite pass. Activated by any workflow whose name
+        # carries "Detailer".
+        "name": "SAM 3.1 (detailer segmentation)",
+        "keywords": ["Detailer"],
+        "script": "get_sam3.sh",
+        "variants": [
+            {
+                "name": "sam3.1_multiplex_fp16 (~1.8GB, text-prompted segmentation)",
+                "args": []
+            },
+        ]
+    },
+
     # --- LTX-2.5 ---
     {
         # Lightricks/LTX-2.5 is gated: get_ltx25.sh checks for an HF login and
