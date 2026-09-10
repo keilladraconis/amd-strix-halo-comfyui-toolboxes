@@ -30,6 +30,12 @@
 # tuning subset stays byte-identical across all three. Change a tuning flag
 # here and that test tells you which other files to change.
 
+# COMFY_OUTPUT_DIR (optional) sends renders somewhere other than
+# $HOME/comfy-ui/output -- typically into the project that produced them, so
+# takes never accumulate in a shared pile outside it. --output-directory
+# overrides --base-directory for outputs ONLY; the model tree and inputs stay
+# put. Repointing --base-directory instead would drag the models with it.
+# Unset, the flag is absent and behaviour is unchanged.
 comfy_launch_args() {
   printf '%s' "--port 8188 \
 --base-directory $HOME/comfy-ui \
@@ -38,5 +44,5 @@ comfy_launch_args() {
 --disable-smart-memory \
 --cache-none \
 --bf16-vae \
---enable-manager"
+--enable-manager${COMFY_OUTPUT_DIR:+ --output-directory $COMFY_OUTPUT_DIR}"
 }

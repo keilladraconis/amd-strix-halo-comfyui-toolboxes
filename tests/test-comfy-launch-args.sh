@@ -99,5 +99,14 @@ check "benchmark_workflows.py does not enable the node manager" "" \
 check "collect_perf_logs.py does not enable the node manager" "" \
   "$(grep -n -- '--enable-manager' scripts/collect_perf_logs.py)"
 
+# COMFY_OUTPUT_DIR keeps a project's renders inside the project. It must stay
+# optional: unset, the flag is absent and every existing caller is unaffected.
+check "COMFY_OUTPUT_DIR unset adds no --output-directory" "" \
+  "$(unset COMFY_OUTPUT_DIR; . "$SCRIPT"; comfy_launch_args | grep -o -- '--output-directory')"
+check "COMFY_OUTPUT_DIR set adds the flag with its value" "--output-directory /tmp/takes" \
+  "$(COMFY_OUTPUT_DIR=/tmp/takes; . "$SCRIPT"; comfy_launch_args | grep -o -- '--output-directory /tmp/takes')"
+check "base-directory is never replaced by it" "1" \
+  "$(COMFY_OUTPUT_DIR=/tmp/takes; . "$SCRIPT"; comfy_launch_args | grep -c -- '--base-directory')"
+
 echo "$PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]
