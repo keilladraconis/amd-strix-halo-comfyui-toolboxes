@@ -173,6 +173,14 @@ COPY --chmod=0644 scripts/99-toolbox-banner.sh /etc/profile.d/99-toolbox-banner.
 # Keep /opt/venv/bin first after user dotfiles
 COPY --chmod=0644 scripts/zz-venv-last.sh /etc/profile.d/zz-venv-last.sh
 
+# Terminals whose terminfo the image does not carry (xterm-kitty, wezterm,
+# foot...) break every ncurses program -- dialog, and therefore model_manager,
+# exit with "unknown terminal type". Sort key 00 so it runs before anything
+# that might draw. Falls back only when the entry is genuinely missing, so a
+# recognised TERM is left alone.
+RUN printf 'if ! infocmp "$TERM" >/dev/null 2>&1; then export TERM=xterm-256color; fi\n' \
+      > /etc/profile.d/00-term-fallback.sh && chmod 0644 /etc/profile.d/00-term-fallback.sh
+
 # Disable core dumps in interactive shells (recover faster from ROCm crashes)
 RUN printf 'ulimit -S -c 0\n' > /etc/profile.d/90-nocoredump.sh && chmod 0644 /etc/profile.d/90-nocoredump.sh
 

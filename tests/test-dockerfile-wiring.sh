@@ -255,5 +255,13 @@ check "no downloader writes to the pre-base-directory model root" "" \
 check "every downloader resolves MODEL_HOME under comfy-ui/models" "" \
   "$(grep -L 'MODEL_HOME:-\$HOME/comfy-ui/models' scripts/get_*.sh)"
 
+# dialog (and so model_manager) dies with "unknown terminal type" when TERM has
+# no terminfo entry in the image -- xterm-kitty, wezterm, foot. The fallback was
+# lost once in a Dockerfile restructure; assert it stays.
+check "a TERM fallback ships for terminals the image lacks terminfo for" "0" \
+  "$(grep -q 'term-fallback' Dockerfile; echo $?)"
+check "the TERM fallback only fires when infocmp fails" "0" \
+  "$(grep -q 'infocmp .* || export TERM\|if ! infocmp' Dockerfile; echo $?)"
+
 echo "$PASS passed, $FAIL failed"
 [[ "$FAIL" -eq 0 ]]
