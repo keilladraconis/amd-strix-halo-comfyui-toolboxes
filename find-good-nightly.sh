@@ -51,6 +51,10 @@ die() { echo "Error: $*" >&2; exit 1; }
 preflight() {
   command -v podman >/dev/null 2>&1 || die "podman is required"
   [[ -e /dev/kfd ]] || die "/dev/kfd not found — no AMD GPU compute device on this host"
+  # A stale cached base image fails GPG verification against current repo
+  # metadata and every candidate then looks BAD. Refresh once, up front.
+  echo "Refreshing $BASE_IMAGE ..." >&2
+  podman pull -q "$BASE_IMAGE" >/dev/null 2>&1 || echo "  (pull failed; using cached image)" >&2
 }
 
 # Print "BASE SUFFIX" pairs for one package, e.g. "2.12.0a0 7.13.0a20260323".
@@ -99,10 +103,14 @@ test_candidate() {
     -e TORCH_PIN="torch[device-gfx1151]==${tb}+rocm${suffix}" \
     -e TA_PIN="torchaudio==${ab}+rocm${suffix}" \
     -e TV_PIN="torchvision[device-gfx1151]==${vb}+rocm${suffix}" \
-    "$BASE_IMAGE" bash -s <<'INNER'
+    "$BASE_IMAGE" bash -s <<'INNER' && return 0 || { rc=$?; [[ $rc -eq 90 ]] && die "test harness setup failed inside $BASE_IMAGE (exit 90) -- not a verdict on rocm${suffix}. Try: podman pull $BASE_IMAGE"; return $rc; }
 set -euo pipefail
-dnf -y -q install --setopt=install_weak_deps=False --nodocs python3.13 libatomic libdrm >/dev/null
-python3.13 -m venv /venv
+# Exit 90 means the harness itself could not be set up -- a stale base image,
+# a repo/GPG failure, no network. That is NOT evidence about the nightly, and
+# the caller aborts on it instead of recording a BAD verdict. Without this the
+# search happily bisects the whole index and concludes every build is broken.
+dnf -y -q install --setopt=install_weak_deps=False --nodocs python3.13 libatomic libdrm >/dev/null || exit 90
+python3.13 -m venv /venv || exit 90
 echo "  installing wheels (several GB, be patient)..."
 /venv/bin/pip install -q --index-url "$INDEX_BASE" --pre "$TORCH_PIN" "$TA_PIN" "$TV_PIN"
 timeout "$SMOKE_TIMEOUT" /venv/bin/rocminfo | grep -q gfx1151
