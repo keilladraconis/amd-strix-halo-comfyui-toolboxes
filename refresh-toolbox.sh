@@ -48,7 +48,7 @@ while [ : ]; do
             LOCAL=1
             shift
             ;;
-        --refresh-sources)
+        -r | --refresh-sources)
             REFRESH_SOURCES=1
             shift
             ;;

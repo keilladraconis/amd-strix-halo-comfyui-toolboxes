@@ -41,7 +41,6 @@ comfy_launch_args() {
 --base-directory $HOME/comfy-ui \
 --disable-mmap \
 --gpu-only \
---disable-smart-memory \
 --cache-none \
 --bf16-vae \
 --enable-manager${COMFY_OUTPUT_DIR:+ --output-directory $COMFY_OUTPUT_DIR}"
