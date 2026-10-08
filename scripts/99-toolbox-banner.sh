@@ -80,7 +80,7 @@ sources_line() {
 # >/dev/null when non-interactive, which is the only reason a stray banner has
 # never corrupted the protocol stream. Do not rely on that — bail out
 # explicitly. Aliases below are not expanded in a non-interactive shell anyway,
-# and comfy_launch_args() lives in 02-comfy-launch-args.sh, so nothing the MCP
+# and the launch flags live in /opt/start_comfy_ui.sh, so nothing the MCP
 # path needs is lost by returning here.
 case $- in
   *i*) ;;
@@ -125,13 +125,11 @@ echo
 printf 'SSH tip: ssh -L 8188:localhost:8188 user@host\n\n'
 
 # Aliases
-# Custom node packs and bundled workflows both live in the ComfyUI base
-# directory, not in the image — see /opt/install_custom_nodes.sh and
-# /opt/install_workflows.sh. Installing both before launch means a fresh toolbox
-# can never start with an empty custom_nodes or workflows directory. Workflows
-# use --if-needed so saved edits are not overwritten on every launch. A failure
-# (no network, say) is reported but must not stop ComfyUI from starting.
-alias start_comfy_ui='/opt/install_workflows.sh --if-needed; /opt/install_custom_nodes.sh || echo "⚠ Continuing without some custom nodes."; /opt/setup_comfy_cli.sh >/dev/null || echo "⚠ comfy-cli not registered — the Comfy MCP may launch ComfyUI untuned."; cd /opt/ComfyUI && python main.py $(comfy_launch_args)'
+# start_comfy_ui is the launch entry point: /opt/start_comfy_ui.sh installs
+# workflows and custom nodes first, then execs ComfyUI with the image's tuning
+# flags -- the single source of truth for those lives in that script, which
+# also feeds them to comfy-cli (see its header).
+alias start_comfy_ui='/opt/start_comfy_ui.sh'
 alias setup_comfy_cli='/opt/setup_comfy_cli.sh'
 alias install_custom_nodes='/opt/install_custom_nodes.sh'
 alias update_custom_nodes='/opt/install_custom_nodes.sh update'

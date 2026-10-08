@@ -6,7 +6,7 @@
 # places, so that whichever door the user comes through leaves comfy-cli
 # correct:
 #
-#   * the start_comfy_ui alias, beside install_workflows / install_custom_nodes
+#   * /opt/start_comfy_ui.sh, beside install_workflows / install_custom_nodes
 #   * scripts/comfy-mcp-host.sh, before exec'ing comfy-mcp
 #
 # Without it, the Comfy MCP's launch_comfyui tool starts ComfyUI with comfy-cli's
@@ -30,22 +30,29 @@
 set -uo pipefail
 
 WORKSPACE="${WORKSPACE:-/opt/ComfyUI}"
-ARGS_FILE="${ARGS_FILE:-/etc/profile.d/02-comfy-launch-args.sh}"
+LAUNCH_SCRIPT="${LAUNCH_SCRIPT:-/opt/start_comfy_ui.sh}"
 COMFY="${COMFY_BIN:-comfy}"
 
-if [[ ! -r "$ARGS_FILE" ]]; then
-  echo "✗ Cannot read $ARGS_FILE — no launch flags to register" >&2
+# The flags' single source of truth is start_comfy_ui.sh; --launch-extras is
+# its introspection mode, which prints exactly what comfy-cli wants: one
+# space-separated string (comfy-cli parses it with a plain split(" ")).
+# Never duplicate the flags here.
+if [[ ! -x "$LAUNCH_SCRIPT" ]]; then
+  echo "✗ Cannot run $LAUNCH_SCRIPT — no launch flags to register" >&2
   exit 1
 fi
-# shellcheck source=comfy_launch_args.sh
-. "$ARGS_FILE"
+launch_extras="$("$LAUNCH_SCRIPT" --launch-extras)"
+if [[ $? -ne 0 || -z "$launch_extras" ]]; then
+  echo "✗ $LAUNCH_SCRIPT --launch-extras produced nothing" >&2
+  exit 1
+fi
 
 # --skip-prompt is a TOP-LEVEL option on comfy-cli's app callback, so it comes
 # before the subcommand. Placed after it, comfy-cli does not recognise it and a
 # fresh config raises an interactive telemetry consent prompt -- which on the
 # MCP path would be written into the JSON-RPC stream.
 if "$COMFY" --skip-prompt set-default "$WORKSPACE" \
-     --launch-extras "$(comfy_launch_args)" >/dev/null 2>&1; then
+     --launch-extras "$launch_extras" >/dev/null 2>&1; then
   echo "✅ comfy-cli pointed at $WORKSPACE" >&2
 else
   echo "⚠ Could not register $WORKSPACE with comfy-cli — the Comfy MCP may" >&2

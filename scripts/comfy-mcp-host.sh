@@ -29,7 +29,8 @@
 #     redirection on the setup call.
 #   * `sh -lc`, not `sh -c`: a LOGIN shell sources /etc/profile.d, where the
 #     ROCm tuning (TORCH_ROCM_AOTRITON_ENABLE_EXPERIMENTAL,
-#     TORCH_BLAS_PREFER_HIPBLASLT) and the launch-flag definition live.
+#     TORCH_BLAS_PREFER_HIPBLASLT) lives. The launch flags are no longer
+#     defined there: setup_comfy_cli.sh reads them from /opt/start_comfy_ui.sh.
 #   * `exec` at both levels: the client stops the server by killing this
 #     process, and a wrapper left in between swallows the signal.
 set -uo pipefail

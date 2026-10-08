@@ -41,15 +41,27 @@ check "the custom node installer is copied into the image" "0" \
   "$(grep -qF 'COPY --chmod=755 scripts/install_custom_nodes.sh /opt/' Dockerfile; echo $?)"
 
 # A fresh toolbox must not be able to start ComfyUI with an empty custom_nodes
-# or workflows directory -- forgetting either is the failure this guards.
+# or workflows directory -- forgetting either is the failure this guards. The
+# launcher is a script now (scripts/start_comfy_ui.sh); the banner just aliases
+# to it.
+check "the banner aliases start_comfy_ui to /opt/start_comfy_ui.sh" "0" \
+  "$(grep -qE "alias start_comfy_ui='/opt/start_comfy_ui\.sh'" scripts/99-toolbox-banner.sh; echo $?)"
+check "the launcher script is copied into the image" "0" \
+  "$(grep -qF 'COPY --chmod=755 scripts/start_comfy_ui.sh /opt/' Dockerfile; echo $?)"
 check "start_comfy_ui installs custom nodes before launching" "0" \
-  "$(grep -qE "alias start_comfy_ui=.*install_custom_nodes\.sh" scripts/99-toolbox-banner.sh; echo $?)"
+  "$(grep -qE 'install_custom_nodes\.sh' scripts/start_comfy_ui.sh; echo $?)"
 check "start_comfy_ui installs workflows before launching" "0" \
-  "$(grep -qE "alias start_comfy_ui=.*install_workflows\.sh" scripts/99-toolbox-banner.sh; echo $?)"
+  "$(grep -qE 'install_workflows\.sh' scripts/start_comfy_ui.sh; echo $?)"
 # Without --if-needed it would overwrite edits saved to a bundled workflow on
 # every launch, since ComfyUI saves back to the same filename.
 check "start_comfy_ui installs workflows with --if-needed" "0" \
-  "$(grep -qE "alias start_comfy_ui=.*install_workflows\.sh --if-needed" scripts/99-toolbox-banner.sh; echo $?)"
+  "$(grep -qE 'install_workflows\.sh --if-needed' scripts/start_comfy_ui.sh; echo $?)"
+# The old launcher was a function in a sourced profile.d file whose output the
+# alias expanded unquoted -- so --enable-cors-header '*' globbed against the
+# caller's cwd. Nothing shipped may still name it (docs/ carries dated design
+# records that quote the old shape on purpose).
+check "no comfy_launch_args reference survives in shipped sources" "" \
+  "$(grep -rl 'comfy_launch_args' Dockerfile scripts/ README.md 2>/dev/null)"
 
 # Every workflow the model manager can offer must reach the image.
 check "workflows/*.json are copied into /opt/comfy-workflows" "0" \

@@ -77,7 +77,7 @@ RUN python -m pip install -r requirements.txt && \
 RUN python -m pip install gguf
 
 # Custom node packs are deliberately NOT baked in. ComfyUI runs with
-# --base-directory $HOME/comfy-ui (see scripts/comfy_launch_args.sh), so it
+# --base-directory $HOME/comfy-ui (see scripts/start_comfy_ui.sh), so it
 # scans $HOME/comfy-ui/custom_nodes and never looks at /opt/ComfyUI/custom_nodes
 # -- packs cloned here would simply not load. scripts/install_custom_nodes.sh
 # clones them into the base directory at runtime instead, which is also what
@@ -123,7 +123,7 @@ ENV COMFY_NO_TELEMETRY=1
 
 # ComfyUI-Manager is in core now, but a git-clone install has to opt in: core
 # keeps it out of requirements.txt and ships it in manager_requirements.txt,
-# enabled with --enable-manager (see scripts/comfy_launch_args.sh). Taken from
+# enabled with --enable-manager (see scripts/start_comfy_ui.sh). Taken from
 # core's own file so its version tracks core rather than a stale hand-written
 # pin. This is deliberately below the constraints ENV above: comfyui_manager
 # depends on unpinned transformers and huggingface-hub>0.20, which is precisely
@@ -168,10 +168,6 @@ RUN python -c 'import torch; print(torch.__version__)'
 # ── 8. Static profile.d scripts (rarely change) ───────────────────────────────
 COPY --chmod=0644 scripts/01-rocm-envs.sh /etc/profile.d/01-rocm-envs.sh
 
-# Single source of truth for ComfyUI's launch flags. Sourced before the banner,
-# which defines the start_comfy_ui alias that calls comfy_launch_args().
-COPY --chmod=0644 scripts/comfy_launch_args.sh /etc/profile.d/02-comfy-launch-args.sh
-
 # Banner (runs on login). High sort key so it runs after venv.sh and the env scripts.
 COPY --chmod=0644 scripts/99-toolbox-banner.sh /etc/profile.d/99-toolbox-banner.sh
 
@@ -204,6 +200,7 @@ COPY workflows/API /opt/comfy-workflows/API
 # ── 11. Helper scripts & model manager (change most often) ────────────────────
 COPY --chmod=755 scripts/install_workflows.sh /opt/
 COPY --chmod=755 scripts/install_custom_nodes.sh /opt/
+COPY --chmod=755 scripts/start_comfy_ui.sh /opt/
 COPY --chmod=755 scripts/setup_comfy_cli.sh /opt/
 COPY --chmod=755 scripts/set_extra_paths.sh /opt/
 COPY --chmod=755 scripts/get_wan22.sh /opt/

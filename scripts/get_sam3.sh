@@ -18,7 +18,7 @@ export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 HF="/opt/venv/bin/hf"
 
 # ComfyUI runs with --base-directory $HOME/comfy-ui (see
-# scripts/comfy_launch_args.sh), so models live under $HOME/comfy-ui/models.
+# scripts/start_comfy_ui.sh), so models live under $HOME/comfy-ui/models.
 # Do NOT use $HOME/comfy-models here -- that is the pre-base-directory layout
 # and ComfyUI does not scan it unless set_extra_paths.sh has been run.
 MODEL_HOME="${MODEL_HOME:-$HOME/comfy-ui/models}"

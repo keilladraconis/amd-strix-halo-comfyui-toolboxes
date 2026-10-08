@@ -132,6 +132,48 @@ check "deps are reinstalled when the venv stamp is gone" "6" "$PIPS"
 check "but nothing is re-cloned" "0" "$(grep -c 'git clone' "$E/git.log")"
 rm -rf "$E"
 
+# --- user-installed (non-manifest) packs get their deps installed ------------
+# Manager-installed packs survive a toolbox recreation in $HOME but the venv
+# does not; the dependency pass must cover every pack on disk, not just REPOS.
+E="$(new_env)"
+mkdir -p "$E/base/custom_nodes/comfyui-impact-pack"   # a Manager-installed pack
+printf 'piexif\n' > "$E/base/custom_nodes/comfyui-impact-pack/requirements.txt"
+FAIL_MATCH="" run "$E" install
+check "a fresh install also installs a user pack's requirements" "7" "$PIPS"
+check "the user pack is named in the dependency output" "0" \
+  "$(grep -qF 'comfyui-impact-pack' <<<"$OUT"; echo $?)"
+FAIL_MATCH="" run "$E" install
+check "a second install with a user pack skips dependency work" "0" "$PIPS"
+# A pack the user adds via Manager after the toolbox was set up must still get
+# its deps: the stamp has to notice the requirements set changed.
+mkdir -p "$E/base/custom_nodes/another-user-pack"
+printf 'otherdep\n' > "$E/base/custom_nodes/another-user-pack/requirements.txt"
+FAIL_MATCH="" run "$E" install
+check "adding a user pack busts the stamp and re-runs the dependency pass" "8" "$PIPS"
+rm -rf "$E"
+
+# --- a user pack's dep failure is best effort, not a per-boot stall ----------
+E="$(new_env)"
+FAIL_MATCH="" run "$E" install
+cat >"$E/bin/py" <<'STUB'
+#!/usr/bin/env bash
+echo "py $*" >>"$PIP_LOG"
+if [[ "$*" == *user-broken* ]]; then exit 1; fi
+exit 0
+STUB
+chmod +x "$E/bin/py"
+mkdir -p "$E/base/custom_nodes/user-broken"
+printf 'nope\n' > "$E/base/custom_nodes/user-broken/requirements.txt"
+FAIL_MATCH="" run "$E" install
+check "a user pack's dependency failure is reported" "0" \
+  "$(grep -qF 'user-broken' <<<"$OUT"; echo $?)"
+check "but exits 0: bundled packs all succeeded" "0" "$RC"
+check "and stamps, so the broken dep is not retried every boot" "0" \
+  "$([[ -f "$E/stamp" ]]; echo $?)"
+FAIL_MATCH="" run "$E" install
+check "the next boot does not retry the broken user pack" "0" "$PIPS"
+rm -rf "$E"
+
 # --- update ------------------------------------------------------------------
 E="$(new_env)"
 FAIL_MATCH="" run "$E" install

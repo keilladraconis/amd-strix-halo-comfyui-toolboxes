@@ -108,8 +108,8 @@ Once inside, you have access to a full ROCm environment with PyTorch, ComfyUI, a
 > *   **`--bf16-vae`**: Prevents OOM during VAE decoding.
 > *   **`--disable-mmap`**: **Critical for Strix Halo (gfx1151)**. Memory mapping above 64GB is currently very slow due to a ROCm issue; disabling it prevents performance degradation and hangs.
 > *   **`--cache-none`**: Disables model caching to manage the unified memory more aggressively (`GTT` vs `RAM`).
-> These flags live in `scripts/comfy_launch_args.sh` (installed as
-> `/etc/profile.d/02-comfy-launch-args.sh`), which is also what comfy-cli
+> These flags live in `scripts/start_comfy_ui.sh` (installed as
+> `/opt/start_comfy_ui.sh`), which is also what comfy-cli
 > replays when an agent launches ComfyUI through the Comfy MCP — so both paths
 > get the same tuning. Change them there, then run `setup_comfy_cli`.
 
@@ -227,7 +227,7 @@ If you renamed your container, set `COMFY_TOOLBOX` rather than editing the scrip
 
 ### 4.2 Using it
 
-Start ComfyUI with `start_comfy_ui` in the toolbox first, or let the agent call `launch_comfyui`. Either path produces the same instance: the flags live in one place (`scripts/comfy_launch_args.sh`) that both the alias and comfy-cli read. Ask the agent to call `server_info` to confirm it can see the GPU.
+Start ComfyUI with `start_comfy_ui` in the toolbox first, or let the agent call `launch_comfyui`. Either path produces the same instance: the flags live in one place (`scripts/start_comfy_ui.sh`) that both the launcher and comfy-cli read. Ask the agent to call `server_info` to confirm it can see the GPU.
 
 To re-register comfy-cli by hand after changing those flags:
 

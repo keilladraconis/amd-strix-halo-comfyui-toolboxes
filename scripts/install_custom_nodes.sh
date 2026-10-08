@@ -7,7 +7,9 @@
 # base directory instead, where they also survive `toolbox rm`.
 #
 # Each pack's own requirements.txt drives its dependencies into the venv,
-# rather than the Dockerfile hand-curating them.
+# rather than the Dockerfile hand-curating them -- for user-installed packs
+# (ComfyUI-Manager, manual clones) as well as the bundled ones, since both
+# persist in $HOME across toolbox recreations while the venv does not.
 #
 # Usage:
 #   install_custom_nodes            Clone anything missing, ensure deps
@@ -20,6 +22,9 @@ PY="${PY:-/opt/venv/bin/python}"
 # Dependency installs land in the venv, which lives in the image and is reset
 # whenever the toolbox is recreated. Keeping the stamp there means a fresh
 # toolbox reinstalls deps even though the clones in $HOME persisted.
+# The stamp holds a fingerprint of every pack's requirements.txt in the base
+# directory, so packs installed later (ComfyUI-Manager, a manual clone) and
+# packs whose requirements changed also trigger a reinstall.
 STAMP="${STAMP:-/opt/venv/.custom-nodes-deps}"
 # Stops a pack's requirements.txt from replacing the image's pinned torch,
 # transformers, numpy or pillow. Written at build time from what is actually
@@ -58,6 +63,12 @@ REPOS=(
 MODE="${1:-install}"
 failed=0
 
+# Membership test for REPOS, so bundled and user-installed packs can be told
+# apart in the dependency pass (bundled packs are the image's contract; user
+# packs are best effort).
+declare -A IN_MANIFEST=()
+for url in "${REPOS[@]}"; do IN_MANIFEST["$(basename "$url")"]=1; done
+
 case "$MODE" in
   install|update|list) ;;
   -h|--help|help)
@@ -79,6 +90,14 @@ if [[ "$MODE" == "list" ]]; then
     else
       printf '  %-32s missing\n' "$name"
     fi
+  done
+  # Packs the user installed by other means (Manager, a manual clone) — shown
+  # so it is visible which dependency sets the install path will cover.
+  for d in "$DEST"/*/; do
+    [[ -d "$d" ]] || continue
+    name="$(basename "$d")"
+    [[ -n "${IN_MANIFEST[$name]:-}" ]] && continue
+    printf '  %-32s user-installed\n' "$name"
   done
   exit 0
 fi
@@ -117,9 +136,25 @@ for url in "${REPOS[@]}"; do
   fi
 done
 
-# Reinstall deps when a clone changed, when the venv was reset (stamp gone), or
-# on an explicit update.
-if [[ "$changed" == "1" || ! -f "$STAMP" || "$MODE" == "update" ]]; then
+# Should the dependency pass run? The stamp records a fingerprint of every
+# requirements.txt under $DEST — bundled packs and user packs alike. It is
+# gone after a venv reset (the stamp lives in the venv), and it changes when a
+# pack is added, removed, updated, or hand-fixed. An empty stamp (older
+# images) never matches, so this also migrates.
+requirements_fingerprint() {
+  local f line
+  for f in "$DEST"/*/requirements.txt; do
+    [[ -f "$f" ]] || continue
+    line="$(sha256sum "$f")"
+    printf '%s %s\n' "$(basename "$(dirname "$f")")" "${line%% *}"
+  done | sort | sha256sum | cut -d' ' -f1
+}
+
+wanted_fp="$(requirements_fingerprint)"
+stamped_fp=""
+[[ -f "$STAMP" ]] && stamped_fp="$(cat "$STAMP" 2>/dev/null || true)"
+
+if [[ "$changed" == "1" || "$MODE" == "update" || "$stamped_fp" != "$wanted_fp" ]]; then
   # Effective constraints = the image's pins plus the known-bad-combination
   # pins above. Written to a temp file so pip sees them as one set.
   effective="$(mktemp)"
@@ -136,25 +171,56 @@ if [[ "$changed" == "1" || ! -f "$STAMP" || "$MODE" == "update" ]]; then
   printf '%s\n' "${NODE_PINS[@]}" >> "$effective"
   pip_args=(--quiet --prefer-binary -c "$effective")
 
+  # Every pack on disk with a requirements.txt is a dependency target: packs
+  # survive a toolbox recreation in $HOME, but their pip installs do not, and
+  # ComfyUI-Manager does not repair them for packs that are already present.
+  # Bundled packs go first so a slow or broken user pack cannot delay them.
+  targets=()
+  for url in "${REPOS[@]}"; do
+    [[ -f "$DEST/$(basename "$url")/requirements.txt" ]] && targets+=("$(basename "$url")")
+  done
+  for d in "$DEST"/*/; do
+    [[ -d "$d" ]] || continue
+    name="$(basename "$d")"
+    [[ -f "$d/requirements.txt" && -z "${IN_MANIFEST[$name]:-}" ]] && targets+=("$name")
+  done
+
   echo
   echo "Installing custom node dependencies into the venv ..."
-  for url in "${REPOS[@]}"; do
-    name="$(basename "$url")"
+  user_failed=()
+  for name in "${targets[@]}"; do
     reqs="$DEST/$name/requirements.txt"
-    [[ -f "$reqs" ]] || continue
-    echo "  → $name"
+    if [[ -n "${IN_MANIFEST[$name]:-}" ]]; then
+      echo "  → $name"
+    else
+      echo "  → $name (user-installed)"
+    fi
     if ! "$PY" -m pip install "${pip_args[@]}" -r "$reqs"; then
-      echo "  ⚠ Dependency install failed for $name" >&2
-      echo "    If it conflicts with a pinned package, the constraint is deliberate:" >&2
-      echo "    $CONSTRAINTS" >&2
-      failed=1
+      if [[ -n "${IN_MANIFEST[$name]:-}" ]]; then
+        echo "  ⚠ Dependency install failed for $name" >&2
+        echo "    If it conflicts with a pinned package, the constraint is deliberate:" >&2
+        echo "    $CONSTRAINTS" >&2
+        failed=1
+      else
+        # Best effort: a user pack whose deps cannot build here (a source
+        # compile that needs CUDA, say) must not stall every start, so its
+        # failure still lets the stamp record this requirements set.
+        echo "  ⚠ Dependency install failed for $name (user-installed; continuing)" >&2
+        user_failed+=("$name")
+      fi
     fi
   done
   if [[ "$failed" == "0" ]]; then
-    : > "$STAMP" 2>/dev/null || true
+    printf '%s\n' "$wanted_fp" > "$STAMP" 2>/dev/null || true
   fi
 fi
 
+echo
+if [[ "${#user_failed[@]}" -gt 0 ]]; then
+  echo "⚠ Dependencies failed for user-installed pack(s): ${user_failed[*]}" >&2
+  echo "  They may not load in ComfyUI. update_custom_nodes retries every pack;" >&2
+  echo "  a bundled pack is unaffected." >&2
+fi
 echo
 if [[ "$failed" == "0" ]]; then
   echo "✅ Custom nodes ready → $DEST"
