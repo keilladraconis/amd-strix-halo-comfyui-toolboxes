@@ -43,5 +43,6 @@ comfy_launch_args() {
 --gpu-only \
 --cache-none \
 --bf16-vae \
---enable-manager${COMFY_OUTPUT_DIR:+ --output-directory $COMFY_OUTPUT_DIR}"
+--enable-manager${COMFY_OUTPUT_DIR:+ --output-directory $COMFY_OUTPUT_DIR}" \
+--enable-cors-header "*"
 }

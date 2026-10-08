@@ -39,7 +39,7 @@ resolve_channel() {
 }
 
 # Parse args
-VALID_ARGS=$(getopt -o lc: --long local,channel:,refresh-sources -- "$@")
+VALID_ARGS=$(getopt -o lcr: --long local,channel:,refresh-sources -- "$@")
 
 eval set -- "$VALID_ARGS"
 while [ : ]; do
